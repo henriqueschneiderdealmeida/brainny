@@ -64,8 +64,8 @@ Plans:
 3. Injecting an error inside one message handler does not interrupt sibling jobs in the `p-queue`; the failed message produces a Pino `error` log with `{messageId, errorCode, phase}` and the queue continues to drain.
 
 Plans:
-- [ ] 02-01-PLAN.md — Install deps (p-queue, p-retry, fastify-type-provider-zod ^6.1) + queue plugin + auth handler + ingest/persist services + unit tests + fixtures
-- [ ] 02-02-PLAN.md — POST /webhook/evolution route + Pino redact update + wire queue+webhook into index.ts + full suite gate
+- [x] 02-01-PLAN.md — Install deps (p-queue, p-retry, fastify-type-provider-zod ^6.1) + queue plugin + auth handler + ingest/persist services + unit tests + fixtures
+- [x] 02-02-PLAN.md — POST /webhook/evolution route + Pino redact update + wire queue+webhook into index.ts + full suite gate
 
 ---
 

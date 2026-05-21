@@ -3,12 +3,12 @@
 ## v1 Requirements
 
 ### INGEST — Webhook & Message Ingestion
-- [ ] **INGEST-01**: System validates X-Webhook-Secret header using timing-safe comparison; returns 401 on mismatch
-- [ ] **INGEST-02**: System returns 200 {ok:true} immediately on valid webhook, processes message asynchronously
-- [ ] **INGEST-03**: System handles all message types: text, audio, image, video, document, sticker, location, contact, reaction
-- [ ] **INGEST-04**: System deduplicates messages using ON CONFLICT DO NOTHING on message id
-- [ ] **INGEST-05**: System isolates per-message errors — one failure does not stop processing of other messages
-- [ ] **INGEST-06**: System logs structured errors (Pino) for every failed message with message id and error details
+- [x] **INGEST-01**: System validates X-Webhook-Secret header using timing-safe comparison; returns 401 on mismatch
+- [x] **INGEST-02**: System returns 200 {ok:true} immediately on valid webhook, processes message asynchronously
+- [x] **INGEST-03**: System handles all message types: text, audio, image, video, document, sticker, location, contact, reaction
+- [x] **INGEST-04**: System deduplicates messages using ON CONFLICT DO NOTHING on message id
+- [x] **INGEST-05**: System isolates per-message errors — one failure does not stop processing of other messages
+- [x] **INGEST-06**: System logs structured errors (Pino) for every failed message with message id and error details
 
 ### ENRICH — Media & AI Enrichment
 - [ ] **ENRICH-01**: System downloads audio files and transcribes via OpenAI Whisper (PT-BR language hint); handles files up to 25MB
