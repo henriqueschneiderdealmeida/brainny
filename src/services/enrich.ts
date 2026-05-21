@@ -234,7 +234,7 @@ export async function enrichMessage(
         { messageId: msg.id, type: 'video' },
         'Vídeo ignorado — enriquecimento não implementado nesta fase',
       );
-      break;
+      return; // skip all enrichment including embedding
     }
 
     case 'sticker': {
@@ -242,7 +242,7 @@ export async function enrichMessage(
         { messageId: msg.id, type: 'sticker' },
         'Sticker ignorado — enriquecimento não implementado nesta fase',
       );
-      break;
+      return; // skip all enrichment including embedding
     }
 
     default: {

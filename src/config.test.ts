@@ -6,6 +6,7 @@ describe('loadConfig', () => {
 
   const VALID_ENV = {
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/whatsapp_brain',
+    EVOLUTION_URL: 'https://evolution.yowa.com.br',
     OPENAI_API_KEY: 'sk-test-key',
     WEBHOOK_SECRET: 'webhook-secret-16ch',
     SEARCH_TOKEN: 'search-token-16-ch',
@@ -29,6 +30,7 @@ describe('loadConfig', () => {
 
     // Set all required env vars except DATABASE_URL
     Object.assign(process.env, {
+      EVOLUTION_URL: VALID_ENV.EVOLUTION_URL,
       OPENAI_API_KEY: VALID_ENV.OPENAI_API_KEY,
       WEBHOOK_SECRET: VALID_ENV.WEBHOOK_SECRET,
       SEARCH_TOKEN: VALID_ENV.SEARCH_TOKEN,
