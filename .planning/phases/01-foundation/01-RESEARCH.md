@@ -839,7 +839,7 @@ log.warn('DB unreachable during health check');
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`CREATE EXTENSION vector` already exists in `whatsapp_brain`?**
    - What we know: The database `whatsapp_brain` is a shared existing PostgreSQL instance. pgvector may already be installed.

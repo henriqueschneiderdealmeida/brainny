@@ -11,7 +11,22 @@ This roadmap sequences v1 by dependencies: persistence schema first (everything 
 **Goal:** Stand up the project scaffold, configuration, HTTP server, database schema with pgvector + HNSW, and a live health endpoint — the skeleton every later phase plugs into.
 **Mode:** mvp
 **Requirements:** STORE-01, STORE-02 (schema), STORE-03 (schema), OPS-01, OPS-02
-**Plans:** 3 plans
+**Status:** Planned (3 plans, 3 waves)
+
+**Wave 1** — Toolchain + Zod env config
+- `01-01` Toolchain scaffold, package.json, tsconfig, ESLint, vitest config, src/config.ts, config tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- `01-02` DB schema (Drizzle), Fastify app, plugins, GET /health, health tests
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- `01-03` [BLOCKING, manual] Migration generate + SQL verify + drizzle-kit migrate + HNSW checkpoint
+
+**Cross-cutting constraints:**
+- `"type": "module"` in package.json — all imports must use `.js` extensions
+- All automated verify commands use `node --input-type=module` (ESM-safe)
+- `drizzle-kit push` is FORBIDDEN — always `generate → review → migrate`
+
 **Success Criteria:**
 1. `npm run dev` boots Fastify, validates env via Zod, fails fast on missing vars, and binds to the configured port.
 2. `drizzle-kit migrate` applies the initial migration creating `messages`, `chats`, `sync_state` tables plus the `CREATE EXTENSION vector` and `CREATE INDEX ... USING hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)` statements.
