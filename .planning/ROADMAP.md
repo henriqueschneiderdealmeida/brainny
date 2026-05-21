@@ -44,10 +44,16 @@ Plans:
 **Goal:** Accept Evolution API webhooks safely and asynchronously — validate the secret, ack fast, queue work, parse every WhatsApp message type, deduplicate, and isolate per-message errors with structured logs.
 **Mode:** mvp
 **Requirements:** INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05, INGEST-06
+**Plans:** 2 plans
+
 **Success Criteria:**
 1. `POST /webhook/evolution` with a wrong `X-Webhook-Secret` returns 401 (compared via `crypto.timingSafeEqual`); with the right secret returns 200 `{ok:true}` in under 50ms p99 even when the queue is busy.
 2. A fixture suite of every message type (text, extended text, audio, image, video, document, sticker, location, contact, reaction) flows through `services/ingest.ts` → `services/persist.ts` and results in exactly one row per id; replaying the same payload twice produces zero duplicates.
 3. Injecting an error inside one message handler does not interrupt sibling jobs in the `p-queue`; the failed message produces a Pino `error` log with `{messageId, errorCode, phase}` and the queue continues to drain.
+
+Plans:
+- [ ] 02-01-PLAN.md — Install deps (p-queue, p-retry, fastify-type-provider-zod ^6.1) + queue plugin + auth handler + ingest/persist services + unit tests + fixtures
+- [ ] 02-02-PLAN.md — POST /webhook/evolution route + Pino redact update + wire queue+webhook into index.ts + full suite gate
 
 ---
 
@@ -99,4 +105,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-05-21 after Phase 1 planning.*
+*Last updated: 2026-05-21 after Phase 2 planning.*
