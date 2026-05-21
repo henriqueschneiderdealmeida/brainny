@@ -28,7 +28,7 @@ async function main() {
     // T-02-01: redact DATABASE_URL from logs
     logger: {
       level: config.LOG_LEVEL,
-      redact: ['*.connectionString', '*.DATABASE_URL', '*.password'],
+      redact: ['*.connectionString', '*.DATABASE_URL', '*.password', "req.headers['x-webhook-secret']"],
     },
     bodyLimit: 10 * 1024 * 1024, // 10 MB default; override per-route for media
   });
