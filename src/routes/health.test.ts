@@ -35,7 +35,7 @@ describe('GET /health', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json<{ ok: boolean; ts: string; db: string }>();
+    const body = response.json() as { ok: boolean; ts: string; db: string };
     expect(body.ok).toBe(true);
     expect(body.db).toBe('ok');
   });
@@ -54,7 +54,7 @@ describe('GET /health', () => {
     });
 
     expect(response.statusCode).toBe(503);
-    const body = response.json<{ ok: boolean; ts: string; db: string }>();
+    const body = response.json() as { ok: boolean; ts: string; db: string };
     expect(body.ok).toBe(false);
     expect(body.db).toBe('error');
   });
@@ -72,7 +72,7 @@ describe('GET /health', () => {
       url: '/health',
     });
 
-    const body = response.json<{ ok: boolean; ts: string; db: string }>();
+    const body = response.json() as { ok: boolean; ts: string; db: string };
     expect(typeof body.ts).toBe('string');
     // ISO 8601 date: e.g. "2026-05-21T16:51:37.123Z"
     expect(() => new Date(body.ts)).not.toThrow();

@@ -25,6 +25,17 @@ export default tseslint.config(
     },
   },
   {
+    // Test files: relax unsafe rules — mocks and inject() return loosely-typed values
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', 'src/db/migrations/**'],
   },
 );
