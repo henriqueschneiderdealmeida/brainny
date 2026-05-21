@@ -73,11 +73,32 @@ Plans:
 **Goal:** Turn audio, images, and documents into searchable text via OpenAI — download safely, transcribe with Whisper (PT-BR), describe images with GPT-4o-mini Vision, generate embeddings, and store assets to disk.
 **Mode:** mvp
 **Requirements:** ENRICH-01, ENRICH-02, ENRICH-03, ENRICH-04, ENRICH-05
+**Status:** Planned (2/2 plans)
+
+**Wave 1** — OpenAI service layer (install, config, plugin, enrich service, unit tests)
+- `03-01` npm install openai@^5.23 + EVOLUTION_URL in config + openai.ts plugin + enrich.ts service (downloadMedia, Whisper, Vision, embed, storeAsset) + enrich.test.ts unit tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- `03-02` Wire enrichMessage into webhook.ts queue job + register openaiPlugin in index.ts + integration tests + full suite gate
+
+**Cross-cutting constraints:**
+- `maxRetries: 0` on OpenAI client — p-retry owns all retries (no double backoff storm)
+- `await toFile(buffer, ...)` — toFile returns a Promise; must be awaited before transcriptions.create
+- Three module-level PQueue instances in enrich.ts (whisper/vision/embedding) — not per-call
+- `EVOLUTION_URL` env var drives SSRF allowlist — never hardcode Evolution hostname
+- `msg.timestamp` (not `new Date()`) for asset directory date derivation
+- video and sticker: skip enrichment with log.info, no OpenAI call, no storeAsset
+- p-retry v6: use `randomize: true` (NOT `jitter: 'full'` which is v5 syntax)
+
 **Success Criteria:**
 1. An audio message (≤25MB) ends up persisted with `text` containing the Whisper transcript in PT-BR, the original media file written under `data/YYYY-MM-DD/assets/`, and `embedding` populated to length 1536.
 2. An image message ends up persisted with `text` containing a PT-BR description from GPT-4o-mini Vision (passed as base64 data URL, not Evolution URL), and a non-null embedding.
 3. Submitting a text body longer than 8000 chars triggers a Pino `warn` log identifying the message id and truncated length before embedding; the embedding call still succeeds.
 4. Rate limits and transient failures (429 / 5xx) from OpenAI are absorbed by `p-queue` + exponential backoff; sustained 100-message bursts complete without any message landing in a permanently failed state.
+
+Plans:
+- [ ] 03-01-PLAN.md — Install openai@^5.23 + EVOLUTION_URL config + openai.ts Fastify plugin + enrich.ts service (all enrichment logic) + enrich.test.ts unit tests covering ENRICH-01 through ENRICH-05
+- [ ] 03-02-PLAN.md — Wire enrichMessage into webhook.ts queue job + openaiPlugin registration in index.ts + webhook integration tests + full suite gate
 
 ---
 
@@ -117,4 +138,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-05-21 after Phase 2 planning.*
+*Last updated: 2026-05-21 after Phase 3 planning.*
