@@ -1,0 +1,36 @@
+import { z } from 'zod';
+
+export const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().int().positive().default(3000),
+  HOST: z.string().default('0.0.0.0'),
+
+  DATABASE_URL: z.string().url(), // postgresql://user:pass@postgres:5432/whatsapp_brain
+
+  // Phase 2+ — included now so app boots in full later without schema changes:
+  OPENAI_API_KEY: z.string().min(1),
+  WEBHOOK_SECRET: z.string().min(16),
+  SEARCH_TOKEN: z.string().min(16),
+
+  DATA_DIR: z.string(), // Obsidian vault path
+  INGEST_CONCURRENCY: z.coerce.number().int().positive().default(3),
+  MATERIALIZER_CRON: z.string().default('*/5 * * * *'),
+  TZ: z.string().default('America/Sao_Paulo'),
+
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+export function loadConfig(): Env {
+  const result = envSchema.safeParse(process.env);
+  if (!result.success) {
+    // Use console.error here ONLY — this is the one pre-logger boot path
+    // eslint-disable-next-line no-console
+    console.error('ENV validation failed:', result.error.flatten().fieldErrors);
+    process.exit(1);
+  }
+  return result.data;
+}

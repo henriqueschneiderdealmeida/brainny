@@ -14,17 +14,8 @@ describe('loadConfig', () => {
 
   beforeEach(() => {
     originalEnv = { ...process.env };
-    // Clear all relevant keys before each test
-    for (const key of Object.keys(VALID_ENV)) {
-      delete process.env[key];
-    }
-    delete process.env['NODE_ENV'];
-    delete process.env['PORT'];
-    delete process.env['HOST'];
-    delete process.env['INGEST_CONCURRENCY'];
-    delete process.env['MATERIALIZER_CRON'];
-    delete process.env['TZ'];
-    delete process.env['LOG_LEVEL'];
+    // Replace process.env with a clean object (no env vars from host system)
+    process.env = Object.create(null) as NodeJS.ProcessEnv;
   });
 
   afterEach(() => {
@@ -72,8 +63,8 @@ describe('loadConfig', () => {
   });
 
   it('PORT defaults to 3000 when not provided', () => {
+    // VALID_ENV does not include PORT — it should default to 3000
     Object.assign(process.env, VALID_ENV);
-    delete process.env['PORT'];
 
     const result = loadConfig();
 
@@ -81,8 +72,8 @@ describe('loadConfig', () => {
   });
 
   it('NODE_ENV defaults to "development" when not provided', () => {
+    // VALID_ENV does not include NODE_ENV — it should default to 'development'
     Object.assign(process.env, VALID_ENV);
-    delete process.env['NODE_ENV'];
 
     const result = loadConfig();
 
