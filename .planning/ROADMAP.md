@@ -44,7 +44,19 @@ Plans:
 **Goal:** Accept Evolution API webhooks safely and asynchronously — validate the secret, ack fast, queue work, parse every WhatsApp message type, deduplicate, and isolate per-message errors with structured logs.
 **Mode:** mvp
 **Requirements:** INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05, INGEST-06
-**Plans:** 2 plans
+**Status:** Planned (2/2 plans)
+
+**Wave 1** — Services layer (auth, ingest, persist, queue plugin, unit tests)
+- `02-01` Install p-queue/p-retry/fastify-type-provider-zod@^6.1 + queue plugin + auth handler + ingest/persist services + unit tests + 12 fixtures
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- `02-02` POST /webhook/evolution route + Pino redact + wire into index.ts + full suite gate
+
+**Cross-cutting constraints:**
+- `crypto.timingSafeEqual` requires byteLength check BEFORE call — no exceptions
+- `await reply.send({ ok: true })` MUST precede `void fastify.queue.add(...)` in route handler
+- Per-message try/catch inside queue job — never wrap entire batch in one catch
+- Route-level `bodyLimit: 25 * 1024 * 1024` — global limit stays 10MB
 
 **Success Criteria:**
 1. `POST /webhook/evolution` with a wrong `X-Webhook-Secret` returns 401 (compared via `crypto.timingSafeEqual`); with the right secret returns 200 `{ok:true}` in under 50ms p99 even when the queue is busy.
