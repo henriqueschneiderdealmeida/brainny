@@ -1,0 +1,17 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999012@s.whatsapp.net",
+      "fromMe": true,
+      "id": "FIXTURE_FROMME_012"
+    },
+    "pushName": "Eu",
+    "messageType": "conversation",
+    "messageTimestamp": 1716307860,
+    "message": {
+      "conversation": "Eu enviei isso"
+    }
+  }
+}

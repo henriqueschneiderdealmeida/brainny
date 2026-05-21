@@ -1,0 +1,20 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999007@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_STICKER_007"
+    },
+    "pushName": "Remetente Sticker",
+    "messageType": "stickerMessage",
+    "messageTimestamp": 1716307560,
+    "message": {
+      "stickerMessage": {
+        "url": "https://example.com/sticker.webp",
+        "mimetype": "image/webp"
+      }
+    }
+  }
+}

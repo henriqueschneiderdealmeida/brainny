@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999003@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_AUDIO_003"
+    },
+    "pushName": "Remetente Audio",
+    "messageType": "audioMessage",
+    "messageTimestamp": 1716307320,
+    "message": {
+      "audioMessage": {
+        "url": "https://example.com/audio.ogg",
+        "mimetype": "audio/ogg",
+        "seconds": 30
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999006@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_DOC_006"
+    },
+    "pushName": "Remetente Documento",
+    "messageType": "documentMessage",
+    "messageTimestamp": 1716307500,
+    "message": {
+      "documentMessage": {
+        "url": "https://example.com/file.pdf",
+        "mimetype": "application/pdf",
+        "fileName": "relatorio.pdf"
+      }
+    }
+  }
+}

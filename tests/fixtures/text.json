@@ -1,0 +1,17 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999001@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_TEXT_001"
+    },
+    "pushName": "Remetente Texto",
+    "messageType": "conversation",
+    "messageTimestamp": 1716307200,
+    "message": {
+      "conversation": "Olá mundo"
+    }
+  }
+}

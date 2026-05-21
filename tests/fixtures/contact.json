@@ -1,0 +1,24 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999009@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_CONTACT_009"
+    },
+    "pushName": "Remetente Contato",
+    "messageType": "contactsArrayMessage",
+    "messageTimestamp": 1716307680,
+    "message": {
+      "contactsArrayMessage": {
+        "contacts": [
+          {
+            "fullName": "João Silva",
+            "phones": ["+5511999999999"]
+          }
+        ]
+      }
+    }
+  }
+}

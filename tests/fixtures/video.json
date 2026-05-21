@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999005@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_VIDEO_005"
+    },
+    "pushName": "Remetente Video",
+    "messageType": "videoMessage",
+    "messageTimestamp": 1716307440,
+    "message": {
+      "videoMessage": {
+        "url": "https://example.com/video.mp4",
+        "mimetype": "video/mp4",
+        "caption": "Um vídeo"
+      }
+    }
+  }
+}

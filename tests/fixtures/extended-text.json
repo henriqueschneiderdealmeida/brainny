@@ -1,0 +1,19 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999002@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_EXTTEXT_002"
+    },
+    "pushName": "Remetente ExtText",
+    "messageType": "extendedTextMessage",
+    "messageTimestamp": 1716307260,
+    "message": {
+      "extendedTextMessage": {
+        "text": "Texto longo formatado"
+      }
+    }
+  }
+}

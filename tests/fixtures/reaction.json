@@ -1,0 +1,22 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999010@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_REACTION_010"
+    },
+    "pushName": "Remetente Reação",
+    "messageType": "reactionMessage",
+    "messageTimestamp": 1716307740,
+    "message": {
+      "reactionMessage": {
+        "text": "👍",
+        "key": {
+          "id": "SOME_MSG_ID"
+        }
+      }
+    }
+  }
+}

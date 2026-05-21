@@ -1,0 +1,15 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999011@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_UNKNOWN_011"
+    },
+    "pushName": "Remetente Unknown",
+    "messageType": "protocolMessage",
+    "messageTimestamp": 1716307800,
+    "message": {}
+  }
+}

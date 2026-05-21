@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999004@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_IMAGE_004"
+    },
+    "pushName": "Remetente Imagem",
+    "messageType": "imageMessage",
+    "messageTimestamp": 1716307380,
+    "message": {
+      "imageMessage": {
+        "url": "https://example.com/photo.jpg",
+        "mimetype": "image/jpeg",
+        "caption": "Uma foto"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "brainny",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999008@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE_LOCATION_008"
+    },
+    "pushName": "Remetente Localização",
+    "messageType": "locationMessage",
+    "messageTimestamp": 1716307620,
+    "message": {
+      "locationMessage": {
+        "degreesLatitude": -23.5505,
+        "degreesLongitude": -46.6333,
+        "name": "São Paulo"
+      }
+    }
+  }
+}
