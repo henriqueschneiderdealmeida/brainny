@@ -11,7 +11,7 @@ This roadmap sequences v1 by dependencies: persistence schema first (everything 
 **Goal:** Stand up the project scaffold, configuration, HTTP server, database schema with pgvector + HNSW, and a live health endpoint — the skeleton every later phase plugs into.
 **Mode:** mvp
 **Requirements:** STORE-01, STORE-02 (schema), STORE-03 (schema), OPS-01, OPS-02
-**Status:** Planned (3 plans, 3 waves)
+**Status:** Complete (3/3 plans)
 
 **Wave 1** — Toolchain + Zod env config
 - `01-01` Toolchain scaffold, package.json, tsconfig, ESLint, vitest config, src/config.ts, config tests
@@ -34,9 +34,9 @@ This roadmap sequences v1 by dependencies: persistence schema first (everything 
 4. `EXPLAIN ANALYZE` of a sample cosine query (`embedding <=> $1::vector`) shows `Index Scan using messages_embedding_hnsw`, not Seq Scan.
 
 Plans:
-- [ ] 01-01-PLAN.md — Toolchain scaffold (package.json, tsconfig, eslint, vitest) + src/config.ts with Zod env validation
-- [ ] 01-02-PLAN.md — DB schema (Drizzle: messages/chats/sync_state + HNSW) + Fastify app + GET /health route + tests
-- [ ] 01-03-PLAN.md — [BLOCKING] Migration: generate, verify HNSW SQL, apply to whatsapp_brain + human verification checkpoint
+- [x] 01-01-PLAN.md — Toolchain scaffold (package.json, tsconfig, eslint, vitest) + src/config.ts with Zod env validation
+- [x] 01-02-PLAN.md — DB schema (Drizzle: messages/chats/sync_state + HNSW) + Fastify app + GET /health route + tests
+- [x] 01-03-PLAN.md — [BLOCKING] Migration: generate, verify HNSW SQL, apply to whatsapp_brain + human verification checkpoint
 
 ---
 
