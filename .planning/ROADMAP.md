@@ -11,11 +11,17 @@ This roadmap sequences v1 by dependencies: persistence schema first (everything 
 **Goal:** Stand up the project scaffold, configuration, HTTP server, database schema with pgvector + HNSW, and a live health endpoint — the skeleton every later phase plugs into.
 **Mode:** mvp
 **Requirements:** STORE-01, STORE-02 (schema), STORE-03 (schema), OPS-01, OPS-02
+**Plans:** 3 plans
 **Success Criteria:**
 1. `npm run dev` boots Fastify, validates env via Zod, fails fast on missing vars, and binds to the configured port.
 2. `drizzle-kit migrate` applies the initial migration creating `messages`, `chats`, `sync_state` tables plus the `CREATE EXTENSION vector` and `CREATE INDEX ... USING hnsw (embedding vector_cosine_ops) WITH (m=16, ef_construction=64)` statements.
 3. `GET /health` returns `{ok: true, ts, db: "ok"}` when Postgres is reachable and `{..., db: "error"}` (with non-200) when it is not.
 4. `EXPLAIN ANALYZE` of a sample cosine query (`embedding <=> $1::vector`) shows `Index Scan using messages_embedding_hnsw`, not Seq Scan.
+
+Plans:
+- [ ] 01-01-PLAN.md — Toolchain scaffold (package.json, tsconfig, eslint, vitest) + src/config.ts with Zod env validation
+- [ ] 01-02-PLAN.md — DB schema (Drizzle: messages/chats/sync_state + HNSW) + Fastify app + GET /health route + tests
+- [ ] 01-03-PLAN.md — [BLOCKING] Migration: generate, verify HNSW SQL, apply to whatsapp_brain + human verification checkpoint
 
 ---
 
@@ -78,4 +84,4 @@ This roadmap sequences v1 by dependencies: persistence schema first (everything 
 
 ---
 
-*Last updated: 2026-05-21 after initialization.*
+*Last updated: 2026-05-21 after Phase 1 planning.*
