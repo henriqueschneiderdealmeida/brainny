@@ -6,10 +6,12 @@
 // T-02-09: per-message try/catch prevents queue stall on single job failure
 // T-02-10: preHandler: [authHandler] on the route directly (not global hook)
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import type { Logger } from 'pino';
 import { z } from 'zod';
 import { makeWebhookAuthHandler } from '../lib/auth.js';
 import { extractMessages } from '../services/ingest.js';
 import { persistMessage } from '../services/persist.js';
+import { enrichMessage } from '../services/enrich.js';
 
 // Intentionally loose schema — Evolution body parsing happens in services/ingest.ts.
 // passthrough() ensures new top-level Evolution fields never produce a 400 (RESEARCH Pitfall 6).
@@ -48,6 +50,10 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
         event: (body as { event?: string }).event,
       });
 
+      // T-03-07: derive allowedHostname from EVOLUTION_URL once per request
+      // EVOLUTION_URL is validated as z.string().url() by Zod at startup — new URL() will not throw
+      const allowedHostname = new URL(fastify.config.EVOLUTION_URL).hostname;
+
       // Fire-and-forget: void prevents unhandled-promise-rejection lint warnings
       // Pitfall 2: do NOT await — that would block until the job completes
       void fastify.queue.add(async () => {
@@ -69,6 +75,30 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
               'Falha ao persistir mensagem',
             );
             // Do NOT rethrow — sibling messages must continue processing (INGEST-05)
+            continue; // skip enrichment if persist failed
+          }
+
+          // ENRICH: enrich the persisted message — isolated from persist and sibling messages
+          try {
+            await enrichMessage(
+              fastify.db,
+              fastify.openai,
+              msg,
+              log as unknown as Logger, // FastifyBaseLogger is structurally compatible with pino.Logger at runtime
+              fastify.config.DATA_DIR,
+              allowedHostname,
+            );
+          } catch (err: unknown) {
+            log.error(
+              {
+                messageId: msg.id,
+                errorCode: err instanceof Error ? err.constructor.name : 'UnknownError',
+                phase: 'enrich',
+                err,
+              },
+              'Falha ao enriquecer mensagem',
+            );
+            // Do NOT rethrow — message is persisted; partial enrichment is acceptable
           }
         }
       });

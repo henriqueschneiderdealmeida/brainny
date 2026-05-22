@@ -10,6 +10,7 @@ import {
 import { loadConfig } from './config.js';
 import configPlugin from './plugins/config.js';
 import dbPlugin from './plugins/db.js';
+import openaiPlugin from './plugins/openai.js';
 import queuePlugin from './plugins/queue.js';
 import healthRoutes from './routes/health.js';
 import webhookRoutes from './routes/webhook.js';
@@ -37,9 +38,11 @@ async function main() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  // Register plugins in order: configPlugin MUST come before dbPlugin, queuePlugin after dbPlugin
+  // Register plugins in order: configPlugin MUST come before dbPlugin and openaiPlugin
+  // openaiPlugin depends on configPlugin (fp dependency: ['config'])
   await app.register(configPlugin, { config });
   await app.register(dbPlugin);
+  await app.register(openaiPlugin);
   await app.register(queuePlugin);
 
   // Routes use the ZodTypeProvider typed instance
