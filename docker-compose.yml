@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  brainny:
+    image: brainny:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "3000"
+      LOG_LEVEL: info
+      # Secrets via Swarm environment / Portainer
+      DATABASE_URL: "${DATABASE_URL}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      WEBHOOK_SECRET: "${WEBHOOK_SECRET}"
+      SEARCH_TOKEN: "${SEARCH_TOKEN}"
+      EVOLUTION_URL: "http://evolution:8080"
+      EVOLUTION_API_KEY: "${EVOLUTION_API_KEY}"
+      EVOLUTION_INSTANCE: "${EVOLUTION_INSTANCE:-brainny}"
+      DATA_DIR: "/app/data"
+      TIMEZONE: "America/Sao_Paulo"
+    volumes:
+      - brainny_data:/app/data
+    ports:
+      - "3000:3000"
+    networks:
+      - yowanet
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  brainny_data:
+    driver: local
+
+networks:
+  yowanet:
+    external: true
