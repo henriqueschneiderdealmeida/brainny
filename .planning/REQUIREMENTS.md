@@ -25,8 +25,8 @@
 ### MATERIALIZE — Obsidian Markdown
 - [ ] **MAT-01**: System materializes messages as Markdown files every 5 minutes via node-cron
 - [ ] **MAT-02**: Materializer uses in-process mutex lock to prevent overlapping executions
-- [ ] **MAT-03**: Materializer groups messages by date (YYYY-MM-DD) and chat, writes to Obsidian vault
-- [ ] **MAT-04**: Materializer writes atomically (tmp file + rename) to prevent partial reads by Obsidian
+- [x] **MAT-03**: Materializer groups messages by date (YYYY-MM-DD) and chat, writes to Obsidian vault
+- [x] **MAT-04**: Materializer writes atomically (tmp file + rename) to prevent partial reads by Obsidian
 
 ### SEARCH — Semantic Search API
 - [ ] **SEARCH-01**: GET /search?q= endpoint validates Authorization: Bearer {SEARCH_TOKEN} header; returns 401 on mismatch
