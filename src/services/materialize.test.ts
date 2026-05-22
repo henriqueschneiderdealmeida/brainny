@@ -9,10 +9,14 @@ import type * as schema from '../db/schema.js';
 import type { Message } from '../db/schema.js';
 
 // ─── Mock node:fs/promises ────────────────────────────────────────────────────
-// Must be declared before the module under test is imported (vi.mock is hoisted).
-const mockMkdir = vi.fn().mockResolvedValue(undefined);
-const mockWriteFile = vi.fn().mockResolvedValue(undefined);
-const mockRename = vi.fn().mockResolvedValue(undefined);
+// vi.mock is hoisted to the top of the file by vitest. Variables referenced inside the
+// factory must also be hoisted via vi.hoisted() so they are initialized before the mock
+// factory runs. See: https://vitest.dev/api/vi.html#vi-hoisted
+const { mockMkdir, mockWriteFile, mockRename } = vi.hoisted(() => ({
+  mockMkdir: vi.fn().mockResolvedValue(undefined),
+  mockWriteFile: vi.fn().mockResolvedValue(undefined),
+  mockRename: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('node:fs/promises', () => ({
   default: {
