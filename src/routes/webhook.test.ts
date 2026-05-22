@@ -23,9 +23,14 @@ vi.mock('../services/persist.js', () => ({
   persistMessage: vi.fn(),
 }));
 
+vi.mock('../services/enrich.js', () => ({
+  enrichMessage: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Dynamic imports AFTER vi.mock() to get the mocked versions
 const { extractMessages } = await import('../services/ingest.js');
 const { persistMessage } = await import('../services/persist.js');
+const { enrichMessage } = await import('../services/enrich.js');
 
 import webhookRoutes from './webhook.js';
 
@@ -59,6 +64,7 @@ async function buildApp() {
     PORT: 3000,
     HOST: '0.0.0.0',
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/test',
+    EVOLUTION_URL: 'https://evolution.yowa.com.br',
     OPENAI_API_KEY: 'test-openai-key',
     WEBHOOK_SECRET: TEST_SECRET,
     SEARCH_TOKEN: 'testsearchtoken123456',
@@ -71,6 +77,10 @@ async function buildApp() {
 
   // Provide fastify.db
   app.decorate('db', makeMockDb());
+
+  // Provide fastify.openai stub — enrichMessage is mocked so this object is never actually called
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  app.decorate('openai', {} as any);
 
   // Provide fastify.queue via the mock plugin (fp so it's visible to sub-plugins)
   await app.register(fp(mockQueuePlugin, { name: 'queue' }));
@@ -284,6 +294,130 @@ describe('POST /webhook/evolution', () => {
     const calls = vi.mocked(persistMessage).mock.calls;
     const goodCall = calls.find(([, msg]) => msg.id === 'good-id');
     expect(goodCall).toBeDefined();
+  });
+
+  // ENRICH wiring: enrichMessage is called after persist for audio messages
+  it('calls enrichMessage after persistMessage for audio message', async () => {
+    const audioMsg: NormalizedMessage = {
+      id: 'FIXTURE_AUDIO_003',
+      chatId: '5511999999003@s.whatsapp.net',
+      sender: '5511999999003@s.whatsapp.net',
+      senderName: 'Remetente Audio',
+      timestamp: new Date(1716307320 * 1000),
+      type: 'audio',
+      text: null,
+      mediaUrl: 'https://evolution.yowa.com.br/audio.ogg',
+      rawJson: {},
+      embedding: null,
+    };
+
+    vi.mocked(extractMessages).mockReturnValue([audioMsg]);
+    vi.mocked(persistMessage).mockResolvedValue(undefined);
+    vi.mocked(enrichMessage).mockResolvedValue(undefined);
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhook/evolution',
+      headers: { 'x-webhook-secret': TEST_SECRET },
+      payload: validBody,
+    });
+
+    await app.queue.onIdle();
+
+    expect(vi.mocked(enrichMessage)).toHaveBeenCalledOnce();
+    expect(vi.mocked(enrichMessage)).toHaveBeenCalledWith(
+      expect.anything(), // fastify.db
+      expect.anything(), // fastify.openai
+      expect.objectContaining({ id: 'FIXTURE_AUDIO_003', type: 'audio' }),
+      expect.anything(), // log
+      '/tmp/test',       // DATA_DIR
+      'evolution.yowa.com.br', // allowedHostname derived from EVOLUTION_URL
+    );
+  });
+
+  // ENRICH wiring: enrichMessage failure does not surface to HTTP layer (returns 200)
+  it('enrichMessage failure does not break 200 response', async () => {
+    const audioMsg: NormalizedMessage = {
+      id: 'enrich-fail-id',
+      chatId: '5511999999003@s.whatsapp.net',
+      sender: '5511999999003@s.whatsapp.net',
+      senderName: 'Test',
+      timestamp: new Date(1716307320 * 1000),
+      type: 'audio',
+      text: null,
+      mediaUrl: 'https://evolution.yowa.com.br/audio.ogg',
+      rawJson: {},
+      embedding: null,
+    };
+
+    vi.mocked(extractMessages).mockReturnValue([audioMsg]);
+    vi.mocked(persistMessage).mockResolvedValue(undefined);
+    vi.mocked(enrichMessage).mockRejectedValue(new Error('OpenAI API error'));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/webhook/evolution',
+      headers: { 'x-webhook-secret': TEST_SECRET },
+      payload: validBody,
+    });
+
+    // HTTP response must still be 200 regardless of enrichment failure
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    await app.queue.onIdle();
+    // enrichMessage was called but threw — no rethrow propagated
+    expect(vi.mocked(enrichMessage)).toHaveBeenCalledOnce();
+  });
+
+  // ENRICH wiring: enrichMessage failure is isolated per message — sibling still attempted
+  it('enrichMessage failure is isolated per message — sibling messages still processed', async () => {
+    const msg1: NormalizedMessage = {
+      id: 'msg-1',
+      chatId: '5511@s.whatsapp.net',
+      sender: '5511@s.whatsapp.net',
+      senderName: 'First',
+      timestamp: new Date(1716307320 * 1000),
+      type: 'audio',
+      text: null,
+      mediaUrl: 'https://evolution.yowa.com.br/audio1.ogg',
+      rawJson: {},
+      embedding: null,
+    };
+    const msg2: NormalizedMessage = {
+      id: 'msg-2',
+      chatId: '5511@s.whatsapp.net',
+      sender: '5511@s.whatsapp.net',
+      senderName: 'Second',
+      timestamp: new Date(1716307320 * 1000),
+      type: 'text',
+      text: 'hello',
+      mediaUrl: null,
+      rawJson: {},
+      embedding: null,
+    };
+
+    vi.mocked(extractMessages).mockReturnValue([msg1, msg2]);
+    vi.mocked(persistMessage).mockResolvedValue(undefined);
+    // enrichMessage throws only for first call, succeeds for second
+    vi.mocked(enrichMessage)
+      .mockRejectedValueOnce(new Error('Enrich error for msg-1'))
+      .mockResolvedValueOnce(undefined);
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhook/evolution',
+      headers: { 'x-webhook-secret': TEST_SECRET },
+      payload: validBody,
+    });
+
+    await app.queue.onIdle();
+
+    // Both messages must have had enrichMessage attempted
+    expect(vi.mocked(enrichMessage)).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(enrichMessage).mock.calls;
+    expect(calls[0]?.[2]).toMatchObject({ id: 'msg-1' });
+    expect(calls[1]?.[2]).toMatchObject({ id: 'msg-2' });
   });
 
   // Non-MESSAGES_UPSERT events: return 200, extractMessages returns [], nothing persisted
