@@ -108,6 +108,14 @@ Plans:
 **Goal:** Make the corpus queryable — finalize Drizzle upserts for messages/chats and expose an authenticated semantic search endpoint over pgvector.
 **Mode:** mvp
 **Requirements:** STORE-02, STORE-03, SEARCH-01, SEARCH-02
+**Status:** Complete (2/2 plans)
+
+**Verified:** 2026-05-22 — 78/78 tests passing, 0 tsc errors.
+
+Plans:
+- [x] 04-01-PLAN.md — Chat upsert + persist tests (STORE-02, STORE-03)
+- [x] 04-02-PLAN.md — GET /search endpoint (SEARCH-01, SEARCH-02)
+
 **Success Criteria:**
 1. Every persisted message row carries the full original Evolution payload in `raw_json`, enabling re-enrichment without refetching from Evolution; every message also triggers an upsert into `chats` (name, is_group, participants_json, last_seen_at).
 2. `GET /search?q=...` without `Authorization: Bearer <SEARCH_TOKEN>` (or with the wrong token, compared via `timingSafeEqual`) returns 401; with the correct token it returns 200.
