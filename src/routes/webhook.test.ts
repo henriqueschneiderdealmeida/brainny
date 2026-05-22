@@ -110,10 +110,14 @@ describe('POST /webhook/evolution', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // Restore default enrichMessage implementation after clearAllMocks wipes call records
+    vi.mocked(enrichMessage).mockResolvedValue(undefined);
     app = await buildApp();
   });
 
   afterEach(async () => {
+    // Drain pending queue jobs before closing so they don't bleed into the next test
+    await app.queue.onIdle();
     await app.close();
   });
 

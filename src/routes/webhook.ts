@@ -57,7 +57,7 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
       // Fire-and-forget: void prevents unhandled-promise-rejection lint warnings
       // Pitfall 2: do NOT await — that would block until the job completes
       void fastify.queue.add(async () => {
-        const messages = extractMessages(body, log);
+        const messages = extractMessages(body, log as unknown as Logger);
 
         for (const msg of messages) {
           // INGEST-05: each message isolated — one failure does NOT stop siblings

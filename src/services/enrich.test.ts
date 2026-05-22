@@ -305,7 +305,7 @@ describe('enrichMessage — audio', () => {
     await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
 
     expect(openai.audio.transcriptions.create).toHaveBeenCalledOnce();
-    const callArg = (openai.audio.transcriptions.create as ReturnType<typeof vi.fn>).mock.calls[0][0] as Record<string, unknown>;
+    const callArg = (openai.audio.transcriptions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
     expect(callArg.model).toBe('whisper-1');
     expect(callArg.language).toBe('pt');
     expect(callArg.response_format).toBe('text');
@@ -350,12 +350,12 @@ describe('enrichMessage — image', () => {
     await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
 
     expect(openai.chat.completions.create).toHaveBeenCalledOnce();
-    const callArg = (openai.chat.completions.create as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+    const callArg = (openai.chat.completions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
       model: string;
       messages: Array<{ content: Array<{ type: string; image_url?: { url: string; detail: string } }> }>;
     };
     expect(callArg.model).toBe('gpt-4o-mini');
-    const imageContent = callArg.messages[0].content.find((c) => c.type === 'image_url');
+    const imageContent = callArg.messages[0]!.content.find((c) => c.type === 'image_url');
     expect(imageContent?.image_url?.url).toMatch(/^data:image\/jpeg;base64,/);
     expect(imageContent?.image_url?.detail).toBe('low');
   });
@@ -379,7 +379,7 @@ describe('enrichMessage — image', () => {
 
     await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
 
-    const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0][0] as { text: string };
+    const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { text: string };
     expect(setCallArgs.text).toBe('caption do usuário\ndescrição da imagem');
   });
 });
@@ -396,14 +396,14 @@ describe('enrichMessage — text/embed', () => {
     await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
 
     expect(openai.embeddings.create).toHaveBeenCalledOnce();
-    const embedCallArg = (openai.embeddings.create as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+    const embedCallArg = (openai.embeddings.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
       model: string;
       input: string;
     };
     expect(embedCallArg.model).toBe('text-embedding-3-small');
 
     expect(whereMock).toHaveBeenCalled();
-    const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+    const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
       text: string;
       embedding: number[];
     };

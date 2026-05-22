@@ -19,7 +19,7 @@ export const envSchema = z.object({
   TZ: z.string().default('America/Sao_Paulo'),
 
   LOG_LEVEL: z
-    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
 });
 
