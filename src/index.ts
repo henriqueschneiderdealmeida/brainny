@@ -14,6 +14,7 @@ import openaiPlugin from './plugins/openai.js';
 import queuePlugin from './plugins/queue.js';
 import healthRoutes from './routes/health.js';
 import webhookRoutes from './routes/webhook.js';
+import searchRoutes from './routes/search.js';
 
 async function main() {
   // Load dotenv in non-production only
@@ -49,6 +50,7 @@ async function main() {
   const api = app.withTypeProvider<ZodTypeProvider>();
   await api.register(healthRoutes);
   await api.register(webhookRoutes);
+  await api.register(searchRoutes);
 
   // Start listening
   await app.listen({ port: config.PORT, host: config.HOST });

@@ -46,3 +46,36 @@ export function makeWebhookAuthHandler(secret: string) {
     // All checks passed — do NOT call reply.send(); Fastify continues to route handler
   };
 }
+
+/**
+ * Creates a Fastify preHandler that validates the Authorization: Bearer <token> header.
+ * Same constant-time comparison pattern as makeWebhookAuthHandler (SEARCH-01).
+ */
+export function makeSearchAuthHandler(token: string) {
+  const expectedBuf = Buffer.from(token, 'utf8');
+
+  return async function validateSearchToken(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const authHeader = request.headers['authorization'];
+
+    if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+      await reply.code(401).send({ error: 'Unauthorized' });
+      return;
+    }
+
+    const provided = authHeader.slice('Bearer '.length);
+    const providedBuf = Buffer.from(provided, 'utf8');
+
+    if (providedBuf.byteLength !== expectedBuf.byteLength) {
+      await reply.code(401).send({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!timingSafeEqual(providedBuf, expectedBuf)) {
+      await reply.code(401).send({ error: 'Unauthorized' });
+      return;
+    }
+  };
+}
