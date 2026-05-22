@@ -83,6 +83,7 @@ async function buildApp(dbResults = SAMPLE_DB_RESULTS) {
     INGEST_CONCURRENCY: 1,
     MATERIALIZER_CRON: '*/5 * * * *',
     TZ: 'America/Sao_Paulo',
+    TIMEZONE: 'America/Sao_Paulo',
     LOG_LEVEL: 'silent' as const,
   });
 
@@ -177,6 +178,7 @@ describe('GET /search', () => {
       INGEST_CONCURRENCY: 1,
       MATERIALIZER_CRON: '*/5 * * * *',
       TZ: 'America/Sao_Paulo',
+      TIMEZONE: 'America/Sao_Paulo',
       LOG_LEVEL: 'silent' as const,
     });
     customApp.decorate('db', makeMockDb());
@@ -216,6 +218,7 @@ describe('GET /search', () => {
       INGEST_CONCURRENCY: 1,
       MATERIALIZER_CRON: '*/5 * * * *',
       TZ: 'America/Sao_Paulo',
+      TIMEZONE: 'America/Sao_Paulo',
       LOG_LEVEL: 'silent' as const,
     });
     emptyApp.decorate('db', makeMockDb([]));

@@ -72,6 +72,7 @@ async function buildApp() {
     INGEST_CONCURRENCY: 1,
     MATERIALIZER_CRON: '*/5 * * * *',
     TZ: 'America/Sao_Paulo',
+    TIMEZONE: 'America/Sao_Paulo',
     LOG_LEVEL: 'silent' as const,
   });
 

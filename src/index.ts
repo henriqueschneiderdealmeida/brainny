@@ -7,6 +7,8 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
+import cron from 'node-cron';
+import type { Logger } from 'pino';
 import { loadConfig } from './config.js';
 import configPlugin from './plugins/config.js';
 import dbPlugin from './plugins/db.js';
@@ -15,6 +17,7 @@ import queuePlugin from './plugins/queue.js';
 import healthRoutes from './routes/health.js';
 import webhookRoutes from './routes/webhook.js';
 import searchRoutes from './routes/search.js';
+import { runMaterialize } from './services/materialize.js';
 
 async function main() {
   // Load dotenv in non-production only
@@ -54,6 +57,55 @@ async function main() {
 
   // Start listening
   await app.listen({ port: config.PORT, host: config.HOST });
+
+  // MAT-01: Schedule materializer with overlap guard
+  let materializerRunning = false;
+
+  const materializerTask = cron.schedule(
+    config.MATERIALIZER_CRON,
+    async () => {
+      if (materializerRunning) {
+        app.log.info('materializer: tick skipped (already running)');
+        return;
+      }
+      materializerRunning = true;
+      const tickStart = Date.now();
+      app.log.info('materializer: tick started');
+      try {
+        const result = await runMaterialize(
+          app.db,
+          config.DATA_DIR,
+          config.TIMEZONE,
+          app.log as unknown as Logger,
+        );
+        const duration = Date.now() - tickStart;
+        app.log.info(
+          {
+            filesWritten: result.filesWritten,
+            messagesProcessed: result.messagesProcessed,
+            durationMs: duration,
+          },
+          'materializer: tick complete',
+        );
+      } catch (err) {
+        app.log.error({ err }, 'materializer: tick failed');
+      } finally {
+        materializerRunning = false;
+      }
+    },
+    { timezone: config.TIMEZONE, noOverlap: true },
+  );
+
+  // Graceful shutdown: stop cron, drain queue, close Fastify (OPS-03 partial)
+  const shutdown = async (signal: string) => {
+    app.log.info({ signal }, 'shutting down');
+    materializerTask.stop();
+    await app.queue.onIdle();
+    await app.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 }
 
 main().catch((err: unknown) => {
