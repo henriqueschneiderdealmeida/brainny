@@ -128,13 +128,14 @@ Plans:
 **Goal:** Render the corpus into the Obsidian vault as date-partitioned Markdown files every 5 minutes, safely and atomically, so notes are always consistent for Obsidian and Claude MCP to consume.
 **Mode:** mvp
 **Requirements:** MAT-01, MAT-02, MAT-03, MAT-04
-**Status:** In Progress (1/2 plans)
+**Status:** Complete (2/2 plans)
 
 **Verified (05-01):** 2026-05-22 — 20 new tests (98 total), 0 tsc errors. MAT-02, MAT-03, MAT-04 satisfied.
+**Verified (05-02):** 2026-05-22 — 98 tests pass, 0 tsc errors. MAT-01 satisfied (cron scheduler + overlap guard + graceful shutdown).
 
 Plans:
 - [x] 05-01-PLAN.md — Materialize service + tests (runMaterialize, renderDay, writeAtomic, safeFilename, node-cron install)
-- [ ] 05-02-PLAN.md — Wire node-cron into index.ts + MAT-01 overlap guard + full suite gate
+- [x] 05-02-PLAN.md — Wire node-cron into index.ts + MAT-01 overlap guard + full suite gate
 
 **Success Criteria:**
 1. `node-cron` runs the materializer on `*/5 * * * *` (timezone `America/Sao_Paulo`); each tick logs start, message count, and duration.
