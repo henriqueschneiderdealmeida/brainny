@@ -13,7 +13,8 @@ export const envSchema = z.object({
   WEBHOOK_SECRET: z.string().min(16),
   SEARCH_TOKEN: z.string().min(16),
 
-  DATA_DIR: z.string(), // Obsidian vault path
+  DATA_DIR: z.string().default('./data'), // Obsidian vault path
+  TIMEZONE: z.string().default('America/Sao_Paulo'),
   INGEST_CONCURRENCY: z.coerce.number().int().positive().default(3),
   MATERIALIZER_CRON: z.string().default('*/5 * * * *'),
   TZ: z.string().default('America/Sao_Paulo'),
