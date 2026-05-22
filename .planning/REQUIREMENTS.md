@@ -11,35 +11,35 @@
 - [x] **INGEST-06**: System logs structured errors (Pino) for every failed message with message id and error details
 
 ### ENRICH — Media & AI Enrichment
-- [ ] **ENRICH-01**: System downloads audio files and transcribes via OpenAI Whisper (PT-BR language hint); handles files up to 25MB
-- [ ] **ENRICH-02**: System downloads images and generates descriptions via GPT-4o-mini Vision (PT-BR prompt)
-- [ ] **ENRICH-03**: System generates text-embedding-3-small embeddings (1536 dims) for all non-empty text content
-- [ ] **ENRICH-04**: System warns in logs when message text is truncated before embedding (>8000 chars)
-- [ ] **ENRICH-05**: System stores media files locally in date-partitioned directories (data/{YYYY-MM-DD}/assets/)
+- [x] **ENRICH-01**: System downloads audio files and transcribes via OpenAI Whisper (PT-BR language hint); handles files up to 25MB
+- [x] **ENRICH-02**: System downloads images and generates descriptions via GPT-4o-mini Vision (PT-BR prompt)
+- [x] **ENRICH-03**: System generates text-embedding-3-small embeddings (1536 dims) for all non-empty text content
+- [x] **ENRICH-04**: System warns in logs when message text is truncated before embedding (>8000 chars)
+- [x] **ENRICH-05**: System stores media files locally in date-partitioned directories (data/{YYYY-MM-DD}/assets/)
 
 ### STORAGE — PostgreSQL + pgvector
-- [ ] **STORE-01**: System creates HNSW index (m=16, ef_construction=64, vector_cosine_ops) on messages.embedding at migration time
-- [ ] **STORE-02**: System stores messages with full raw_json payload for re-enrichment capability
-- [ ] **STORE-03**: System upserts chat metadata (name, is_group, participants) on every message from that chat
+- [x] **STORE-01**: System creates HNSW index (m=16, ef_construction=64, vector_cosine_ops) on messages.embedding at migration time
+- [x] **STORE-02**: System stores messages with full raw_json payload for re-enrichment capability
+- [x] **STORE-03**: System upserts chat metadata (name, is_group, participants) on every message from that chat
 
 ### MATERIALIZE — Obsidian Markdown
-- [ ] **MAT-01**: System materializes messages as Markdown files every 5 minutes via node-cron
-- [ ] **MAT-02**: Materializer uses in-process mutex lock to prevent overlapping executions
+- [x] **MAT-01**: System materializes messages as Markdown files every 5 minutes via node-cron
+- [x] **MAT-02**: Materializer uses in-process mutex lock to prevent overlapping executions
 - [x] **MAT-03**: Materializer groups messages by date (YYYY-MM-DD) and chat, writes to Obsidian vault
 - [x] **MAT-04**: Materializer writes atomically (tmp file + rename) to prevent partial reads by Obsidian
 
 ### SEARCH — Semantic Search API
-- [ ] **SEARCH-01**: GET /search?q= endpoint validates Authorization: Bearer {SEARCH_TOKEN} header; returns 401 on mismatch
-- [ ] **SEARCH-02**: Search embeds query text and returns top-20 results by cosine similarity with score, sender, timestamp, chat
+- [x] **SEARCH-01**: GET /search?q= endpoint validates Authorization: Bearer {SEARCH_TOKEN} header; returns 401 on mismatch
+- [x] **SEARCH-02**: Search embeds query text and returns top-20 results by cosine similarity with score, sender, timestamp, chat
 
 ### BACKFILL — Historical Sync
 - [ ] **BACKFILL-01**: CLI script (scripts/backfill.ts) fetches historical messages from Evolution API with configurable page size
 - [ ] **BACKFILL-02**: Backfill uses sync_state cursor to resume from last synced timestamp
 
 ### OPS — Operations
-- [ ] **OPS-01**: GET /health returns {ok: true, ts, db: "ok"|"error"} — checks DB connectivity
-- [ ] **OPS-02**: System validates all env vars on startup via Zod schema; crashes with clear error if missing
-- [ ] **OPS-03**: System handles SIGINT/SIGTERM with graceful shutdown (drain queue, close DB, close server)
+- [x] **OPS-01**: GET /health returns {ok: true, ts, db: "ok"|"error"} — checks DB connectivity
+- [x] **OPS-02**: System validates all env vars on startup via Zod schema; crashes with clear error if missing
+- [x] **OPS-03**: System handles SIGINT/SIGTERM with graceful shutdown (drain queue, close DB, close server)
 
 ## v2 Requirements (Deferred)
 
