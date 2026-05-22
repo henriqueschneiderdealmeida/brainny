@@ -33,8 +33,8 @@
 - [x] **SEARCH-02**: Search embeds query text and returns top-20 results by cosine similarity with score, sender, timestamp, chat
 
 ### BACKFILL — Historical Sync
-- [ ] **BACKFILL-01**: CLI script (scripts/backfill.ts) fetches historical messages from Evolution API with configurable page size
-- [ ] **BACKFILL-02**: Backfill uses sync_state cursor to resume from last synced timestamp
+- [x] **BACKFILL-01**: CLI script (scripts/backfill.ts) fetches historical messages from Evolution API with configurable page size
+- [x] **BACKFILL-02**: Backfill uses sync_state cursor to resume from last synced timestamp
 
 ### OPS — Operations
 - [x] **OPS-01**: GET /health returns {ok: true, ts, db: "ok"|"error"} — checks DB connectivity
