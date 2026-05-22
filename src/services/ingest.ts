@@ -1,7 +1,6 @@
 // src/services/ingest.ts
 // Source: RESEARCH.md Pattern 4 — Evolution payload parsing + message type discriminator
 // T-02-02: Explicit allow-list of 10 types; unknown types logged and dropped (not stored)
-// T-02-03: fromMe filter applied before normalizeMessage
 import type { Logger } from 'pino';
 import type { NewMessage } from '../db/schema.js';
 
@@ -25,7 +24,7 @@ interface EvolutionDataItem {
  * Extracts and normalizes messages from an Evolution API MESSAGES_UPSERT webhook body.
  *
  * Handles both single-object and array `data` fields (RESEARCH Pitfall 3 — A1 assumption).
- * Returns [] for non-MESSAGES_UPSERT events and fromMe=true messages.
+ * Returns [] for non-MESSAGES_UPSERT events.
  * Returns [] for unrecognized messageTypes (explicit allow-list — T-02-02).
  */
 export function extractMessages(body: unknown, log: Logger): NormalizedMessage[] {
@@ -44,12 +43,6 @@ export function extractMessages(body: unknown, log: Logger): NormalizedMessage[]
   const results: NormalizedMessage[] = [];
 
   for (const dataItem of dataItems) {
-    // T-02-03: Skip outbound messages — only ingest received messages
-    if (dataItem.key.fromMe) {
-      log.debug({ messageId: dataItem.key.id }, 'Mensagem própria ignorada');
-      continue;
-    }
-
     const normalized = normalizeMessage(dataItem);
     if (!normalized) {
       log.info(
