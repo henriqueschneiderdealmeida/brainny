@@ -149,12 +149,14 @@ Plans:
 **Goal:** Catch up history from Evolution and harden the deployment — CLI backfill with resumable cursors, graceful shutdown, Dockerfile, and the Docker Swarm stack on `yowanet`.
 **Mode:** mvp
 **Requirements:** BACKFILL-01, BACKFILL-02, OPS-03
-**Status:** In progress (1/1 plans)
+**Status:** Complete (2/2 plans)
 
 **Verified (06-01):** 2026-05-22 — 98 tests pass, 0 tsc errors. BACKFILL-01, BACKFILL-02 satisfied.
+**Verified (06-02):** 2026-05-22 — 98 tests pass, 0 tsc errors. OPS-03 satisfied.
 
 Plans:
 - [x] 06-01-PLAN.md — Backfill CLI script with cursor-resumable Evolution pagination (BACKFILL-01, BACKFILL-02)
+- [x] 06-02-PLAN.md — Dockerfile + Docker Swarm stack on yowanet overlay network (OPS-03)
 
 **Success Criteria:**
 1. `tsx scripts/backfill.ts` (or built equivalent) paginates Evolution's `/chat/findMessages` with a configurable page size, respects 429 `Retry-After`, and reuses the same `services/*` code paths as the live webhook ingest.
@@ -164,4 +166,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-05-22 after Phase 6 plan 06-01 completion.*
+*Last updated: 2026-05-22 after Phase 6 plan 06-02 completion — all phases complete, brainny v1.0 ready for deploy.*
