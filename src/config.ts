@@ -7,6 +7,8 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.string().url(), // postgresql://user:pass@postgres:5432/whatsapp_brain
   EVOLUTION_URL: z.string().url(), // https://evolution.yowa.com.br — used for SSRF allowlist derivation
+  EVOLUTION_API_KEY: z.string().min(1), // API key for Evolution instance
+  EVOLUTION_INSTANCE: z.string().min(1).default('brainny'), // Evolution instance name
 
   // Phase 2+ — included now so app boots in full later without schema changes:
   OPENAI_API_KEY: z.string().min(1),

@@ -7,6 +7,7 @@ describe('loadConfig', () => {
   const VALID_ENV = {
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/whatsapp_brain',
     EVOLUTION_URL: 'https://evolution.yowa.com.br',
+    EVOLUTION_API_KEY: 'evo-test-key',
     OPENAI_API_KEY: 'sk-test-key',
     WEBHOOK_SECRET: 'webhook-secret-16ch',
     SEARCH_TOKEN: 'search-token-16-ch',

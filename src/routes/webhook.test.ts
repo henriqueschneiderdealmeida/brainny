@@ -65,6 +65,8 @@ async function buildApp() {
     HOST: '0.0.0.0',
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/test',
     EVOLUTION_URL: 'https://evolution.yowa.com.br',
+    EVOLUTION_API_KEY: 'evo-test-key',
+    EVOLUTION_INSTANCE: 'brainny',
     OPENAI_API_KEY: 'test-openai-key',
     WEBHOOK_SECRET: TEST_SECRET,
     SEARCH_TOKEN: 'testsearchtoken123456',
