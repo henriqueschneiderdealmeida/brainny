@@ -149,6 +149,13 @@ Plans:
 **Goal:** Catch up history from Evolution and harden the deployment — CLI backfill with resumable cursors, graceful shutdown, Dockerfile, and the Docker Swarm stack on `yowanet`.
 **Mode:** mvp
 **Requirements:** BACKFILL-01, BACKFILL-02, OPS-03
+**Status:** In progress (1/1 plans)
+
+**Verified (06-01):** 2026-05-22 — 98 tests pass, 0 tsc errors. BACKFILL-01, BACKFILL-02 satisfied.
+
+Plans:
+- [x] 06-01-PLAN.md — Backfill CLI script with cursor-resumable Evolution pagination (BACKFILL-01, BACKFILL-02)
+
 **Success Criteria:**
 1. `tsx scripts/backfill.ts` (or built equivalent) paginates Evolution's `/chat/findMessages` with a configurable page size, respects 429 `Retry-After`, and reuses the same `services/*` code paths as the live webhook ingest.
 2. Backfill writes its progress into `sync_state` (e.g. `backfill.cursor.<chatId>`); rerunning the script after an interruption resumes from the last persisted cursor without reprocessing rows already in `messages`.
@@ -157,4 +164,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-05-21 after Phase 3 planning.*
+*Last updated: 2026-05-22 after Phase 6 plan 06-01 completion.*
