@@ -26,6 +26,7 @@
     "fastify": "^5.8.5",
     "fastify-plugin": "^5.1.0",
     "fastify-type-provider-zod": "^4.0.2",
+    "node-cron": "^4.2.1",
     "openai": "^5.23.2",
     "p-queue": "^9.3.0",
     "p-retry": "^6.2.1",
