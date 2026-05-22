@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/brainny:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to yowanet via Portainer
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+          PORTAINER_USERNAME: ${{ secrets.PORTAINER_USERNAME }}
+          PORTAINER_PASSWORD: ${{ secrets.PORTAINER_PASSWORD }}
+          SERVICE_ID: kz91w04t3f5epnd2typs2lczu
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/brainny:latest
+        run: |
+          TOKEN=$(curl -sf -X POST "$PORTAINER_URL/api/auth" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"$PORTAINER_USERNAME\",\"password\":\"$PORTAINER_PASSWORD\"}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['jwt'])")
+
+          SERVICE=$(curl -sf "$PORTAINER_URL/api/endpoints/1/docker/services/$SERVICE_ID" \
+            -H "Authorization: Bearer $TOKEN")
+
+          VERSION=$(echo "$SERVICE" | python3 -c "import sys,json; print(json.load(sys.stdin)['Version']['Index'])")
+
+          SPEC=$(echo "$SERVICE" | python3 -c "
+          import sys, json
+          s = json.load(sys.stdin)
+          spec = s['Spec']
+          spec['TaskTemplate']['ForceUpdate'] = spec['TaskTemplate'].get('ForceUpdate', 0) + 1
+          spec['TaskTemplate']['ContainerSpec']['Image'] = '$IMAGE'
+          print(json.dumps(spec))
+          ")
+
+          curl -sf -X POST \
+            "$PORTAINER_URL/api/endpoints/1/docker/services/$SERVICE_ID/update?version=$VERSION" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$SPEC"
+
+          echo "Deploy triggered — service updated to $IMAGE"
