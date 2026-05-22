@@ -2,10 +2,14 @@
 // SEARCH-01: Bearer token auth via timingSafeEqual (same pattern as webhook auth)
 // SEARCH-02: pgvector cosine similarity — top-20 results ordered by embedding <=> query
 import { z } from 'zod';
-import { sql, isNotNull } from 'drizzle-orm';
+import { sql, isNotNull, gte, lte, and } from 'drizzle-orm';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { makeSearchAuthHandler } from '../lib/auth.js';
 import { messages } from '../db/schema.js';
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const parseFrom = (s: string) => new Date(ISO_DATE_RE.test(s) ? `${s}T00:00:00.000Z` : s);
+const parseTo = (s: string) => new Date(ISO_DATE_RE.test(s) ? `${s}T23:59:59.999Z` : s);
 
 const searchResultSchema = z.object({
   id: z.string(),
@@ -22,6 +26,8 @@ const searchResponseSchema = z.object({
 
 const searchQuerySchema = z.object({
   q: z.string().min(1).max(2000),
+  from: z.string().optional(),
+  to: z.string().optional(),
 });
 
 const searchRoutes: FastifyPluginAsyncZod = async (fastify) => {
@@ -40,18 +46,20 @@ const searchRoutes: FastifyPluginAsyncZod = async (fastify) => {
       preHandler: [authHandler],
     },
     async (request) => {
-      const { q } = request.query;
+      const { q, from, to } = request.query;
 
-      // Embed the query text — same client as enrich.ts (SEARCH-02)
       const embeddingResult = await fastify.openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: q,
       });
       const queryEmbedding = embeddingResult.data[0]!.embedding;
-
-      // pgvector: serialize as a literal string to pass to sql template
-      // Drizzle does not (yet) have a typed cosineDistance helper for this pattern
       const embeddingLiteral = `[${queryEmbedding.join(',')}]`;
+
+      const conditions = [
+        isNotNull(messages.embedding),
+        ...(from ? [gte(messages.timestamp, parseFrom(from))] : []),
+        ...(to ? [lte(messages.timestamp, parseTo(to))] : []),
+      ];
 
       const results = await fastify.db
         .select({
@@ -63,7 +71,7 @@ const searchRoutes: FastifyPluginAsyncZod = async (fastify) => {
           score: sql<number>`1 - (embedding <=> ${embeddingLiteral}::vector)`,
         })
         .from(messages)
-        .where(isNotNull(messages.embedding))
+        .where(and(...conditions))
         .orderBy(sql`embedding <=> ${embeddingLiteral}::vector`)
         .limit(20);
 
