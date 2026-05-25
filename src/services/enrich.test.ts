@@ -65,6 +65,7 @@ import {
   truncateForEmbedding,
   storeAsset,
   enrichMessage,
+  detectImageFormat,
 } from './enrich.js';
 
 // Clear all mock call counts between tests so they don't bleed across describe blocks
@@ -248,6 +249,35 @@ describe('truncateForEmbedding', () => {
       { messageId: 'msg-3', originalLength: 9500, truncatedLength: 8000 },
       'Texto truncado antes de gerar embedding',
     );
+  });
+});
+
+// ─── describe: detectImageFormat ─────────────────────────────────────────────
+
+describe('detectImageFormat', () => {
+  it('detects WebP from RIFF+WEBP magic bytes', () => {
+    // Construct a minimal buffer with RIFF at 0-3 and WEBP at 8-11
+    const buf = Buffer.alloc(12);
+    buf[0] = 0x52; buf[1] = 0x49; buf[2] = 0x46; buf[3] = 0x46; // RIFF
+    buf[8] = 0x57; buf[9] = 0x45; buf[10] = 0x42; buf[11] = 0x50; // WEBP
+    expect(detectImageFormat(buf)).toEqual({ mime: 'image/webp', ext: 'webp' });
+  });
+
+  it('detects PNG from magic bytes 89 50 4E 47', () => {
+    const buf = Buffer.alloc(8);
+    buf[0] = 0x89; buf[1] = 0x50; buf[2] = 0x4e; buf[3] = 0x47;
+    expect(detectImageFormat(buf)).toEqual({ mime: 'image/png', ext: 'png' });
+  });
+
+  it('detects JPEG from magic bytes FF D8', () => {
+    const buf = Buffer.alloc(4);
+    buf[0] = 0xff; buf[1] = 0xd8;
+    expect(detectImageFormat(buf)).toEqual({ mime: 'image/jpeg', ext: 'jpg' });
+  });
+
+  it('returns fallback image/jpeg for empty/unknown buffer', () => {
+    expect(detectImageFormat(Buffer.alloc(10))).toEqual({ mime: 'image/jpeg', ext: 'jpg' });
+    expect(detectImageFormat(Buffer.alloc(0))).toEqual({ mime: 'image/jpeg', ext: 'jpg' });
   });
 });
 

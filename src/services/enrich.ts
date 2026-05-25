@@ -53,6 +53,35 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Detects the real image format from buffer magic bytes.
+ * Supports WebP, PNG, JPEG, GIF — falls back to image/jpeg for unknown formats.
+ */
+export function detectImageFormat(buf: Buffer): { mime: string; ext: string } {
+  // WebP: bytes 0-3 = RIFF (52 49 46 46) AND bytes 8-11 = WEBP (57 45 42 50)
+  if (
+    buf.length >= 12 &&
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+  ) {
+    return { mime: 'image/webp', ext: 'webp' };
+  }
+  // PNG: bytes 0-3 = 89 50 4E 47
+  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return { mime: 'image/png', ext: 'png' };
+  }
+  // JPEG: bytes 0-1 = FF D8
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8) {
+    return { mime: 'image/jpeg', ext: 'jpg' };
+  }
+  // GIF: bytes 0-2 = 47 49 46
+  if (buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
+    return { mime: 'image/gif', ext: 'gif' };
+  }
+  // Default fallback
+  return { mime: 'image/jpeg', ext: 'jpg' };
+}
+
+/**
  * Truncates text to MAX_EMBED_CHARS and warns via Pino if truncation occurred.
  * ENRICH-04: warn log includes messageId, originalLength, truncatedLength.
  */
@@ -184,9 +213,11 @@ export async function enrichMessage(
         break;
       }
       const imageBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
+      const { mime, ext: imgExt } = detectImageFormat(imageBuf);
       const base64 = imageBuf.toString('base64');
       const caption = msg.text ?? null;
       // ENRICH-02: Vision with base64 data URL (never Evolution URL — Pitfall 2)
+      // Uses detected mime type so WebP/PNG buffers are sent with correct Content-Type
       const visionResult = (await visionQueue.add(() =>
         withRetry(() =>
           openai.chat.completions.create({
@@ -199,7 +230,7 @@ export async function enrichMessage(
                   {
                     type: 'image_url',
                     image_url: {
-                      url: `data:image/jpeg;base64,${base64}`,
+                      url: `data:${mime};base64,${base64}`,
                       detail: 'low', // ~85 tokens/image (CLAUDE.md recommendation)
                     },
                   },
@@ -215,7 +246,7 @@ export async function enrichMessage(
       )) as ChatCompletion;
       const description = visionResult.choices[0]?.message?.content ?? null;
       text = caption ? `${caption}\n${description}` : description ?? null;
-      await storeAsset(imageBuf, msg.id, 'jpg', msg.timestamp as Date, dataDir);
+      await storeAsset(imageBuf, msg.id, imgExt, msg.timestamp as Date, dataDir);
       break;
     }
 
