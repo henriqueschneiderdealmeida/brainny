@@ -30,8 +30,8 @@ interface EvolutionDataItem {
 export function extractMessages(body: unknown, log: Logger): NormalizedMessage[] {
   const b = body as { event?: string; data?: unknown };
 
-  if (b.event !== 'MESSAGES_UPSERT') {
-    log.info({ event: b.event }, 'Evento ignorado (não é MESSAGES_UPSERT)');
+  if (b.event !== 'messages.upsert') {
+    log.info({ event: b.event }, 'Evento ignorado (não é messages.upsert)');
     return [];
   }
 
