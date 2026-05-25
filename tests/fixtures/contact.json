@@ -1,5 +1,5 @@
 {
-  "event": "MESSAGES_UPSERT",
+  "event": "messages.upsert",
   "instance": "brainny",
   "data": {
     "key": {
@@ -15,7 +15,9 @@
         "contacts": [
           {
             "fullName": "João Silva",
-            "phones": ["+5511999999999"]
+            "phones": [
+              "+5511999999999"
+            ]
           }
         ]
       }

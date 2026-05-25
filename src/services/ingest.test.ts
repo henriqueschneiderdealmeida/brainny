@@ -1,6 +1,6 @@
 // src/services/ingest.test.ts
 // Unit tests for INGEST-03: extractMessages normalizes all 10 message types
-// Also covers: non-MESSAGES_UPSERT filter, fromMe filter, unknown type returns []
+// Also covers: non-messages.upsert filter, fromMe filter, unknown type returns []
 import { describe, it, expect, vi } from 'vitest';
 import type { Logger } from 'pino';
 import { extractMessages } from './ingest.js';
@@ -28,15 +28,16 @@ import unknownTypeFixture from '../../tests/fixtures/unknown-type.json' with { t
 import fromMeFixture from '../../tests/fixtures/from-me.json' with { type: 'json' };
 
 describe('extractMessages', () => {
-  it('returns [] for non-MESSAGES_UPSERT events', () => {
+  it('returns [] for non-messages.upsert events', () => {
     const body = { event: 'CONNECTION_UPDATE', data: {} };
     const result = extractMessages(body, mockLog);
     expect(result).toEqual([]);
   });
 
-  it('returns [] for fromMe=true messages', () => {
+  it('processes fromMe=true messages (own instance messages are stored)', () => {
     const result = extractMessages(fromMeFixture, mockLog);
-    expect(result).toEqual([]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.text).toBe('Eu enviei isso');
   });
 
   it('returns [] for unknown messageType (protocolMessage)', () => {
@@ -157,7 +158,7 @@ describe('extractMessages', () => {
 
   it('handles array data correctly (batched Evolution webhook)', () => {
     const batchBody = {
-      event: 'MESSAGES_UPSERT',
+      event: 'messages.upsert',
       instance: 'brainny',
       data: [textFixture.data, audioFixture.data],
     };

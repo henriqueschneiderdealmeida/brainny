@@ -1,5 +1,5 @@
 {
-  "event": "MESSAGES_UPSERT",
+  "event": "messages.upsert",
   "instance": "brainny",
   "data": {
     "key": {

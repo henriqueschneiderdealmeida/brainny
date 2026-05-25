@@ -71,7 +71,7 @@ export function truncateForEmbedding(text: string, messageId: string, log: Logge
  * T-03-02: Checks Content-Length before buffering; hard cap after download.
  * Source: RESEARCH.md Pattern 6
  */
-export async function downloadMedia(url: string, allowedHostname: string): Promise<Buffer> {
+export async function downloadMedia(url: string, allowedHostnames: string[]): Promise<Buffer> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -84,8 +84,8 @@ export async function downloadMedia(url: string, allowedHostname: string): Promi
     throw new Error('Apenas HTTPS é permitido para download de mídia');
   }
 
-  // T-03-01: Hostname allowlist check — derived from EVOLUTION_URL env var at call site
-  if (parsed.hostname !== allowedHostname) {
+  // T-03-01: Hostname allowlist — Evolution API host + WhatsApp CDN (mmg.whatsapp.net)
+  if (!allowedHostnames.includes(parsed.hostname)) {
     throw new Error(`Hostname não permitido para download de mídia: ${parsed.hostname}`);
   }
 
@@ -151,7 +151,7 @@ export async function enrichMessage(
   msg: NormalizedMessage,
   log: Logger,
   dataDir: string,
-  allowedHostname: string,
+  allowedHostnames: string[],
 ): Promise<void> {
   let text: string | null = msg.text ?? null;
 
@@ -161,7 +161,7 @@ export async function enrichMessage(
         log.info({ messageId: msg.id }, 'Áudio sem URL, ignorado');
         break;
       }
-      const audioBuf = await downloadMedia(msg.mediaUrl, allowedHostname);
+      const audioBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
       // ENRICH-01: Whisper with toFile — must be awaited (Pitfall 1 guard: toFile returns Promise)
       const audioFile = await toFile(audioBuf, `${msg.id}.ogg`, { type: 'audio/ogg' });
       text = (await whisperQueue.add(() =>
@@ -183,7 +183,7 @@ export async function enrichMessage(
         log.info({ messageId: msg.id }, 'Imagem sem URL, ignorada');
         break;
       }
-      const imageBuf = await downloadMedia(msg.mediaUrl, allowedHostname);
+      const imageBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
       const base64 = imageBuf.toString('base64');
       const caption = msg.text ?? null;
       // ENRICH-02: Vision with base64 data URL (never Evolution URL — Pitfall 2)
@@ -221,7 +221,7 @@ export async function enrichMessage(
 
     case 'document': {
       if (!msg.mediaUrl) break;
-      const docBuf = await downloadMedia(msg.mediaUrl, allowedHostname);
+      const docBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
       const rawDoc = msg.rawJson as { documentMessage?: { fileName?: string } };
       const ext = rawDoc.documentMessage?.fileName?.split('.').pop() ?? 'bin';
       await storeAsset(docBuf, msg.id, ext, msg.timestamp as Date, dataDir);

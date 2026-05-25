@@ -141,18 +141,39 @@ describe('downloadMedia', () => {
 
   it('rejects non-HTTPS URL with descriptive error', async () => {
     await expect(
-      downloadMedia('http://evolution.yowa.com.br/media/audio.ogg', 'evolution.yowa.com.br'),
+      downloadMedia('http://evolution.yowa.com.br/media/audio.ogg', ['evolution.yowa.com.br']),
     ).rejects.toThrow('Apenas HTTPS é permitido para download de mídia');
   });
 
-  it('rejects hostname not matching allowedHostname', async () => {
+  it('rejects hostname not in allowedHostnames', async () => {
     await expect(
-      downloadMedia('https://evil.example.com/media/audio.ogg', 'evolution.yowa.com.br'),
+      downloadMedia('https://evil.example.com/media/audio.ogg', ['evolution.yowa.com.br']),
     ).rejects.toThrow('Hostname não permitido para download de mídia: evil.example.com');
   });
 
+  it('accepts mmg.whatsapp.net when it is in the allowedHostnames list', async () => {
+    const sampleData = new Uint8Array([1, 2, 3]).buffer;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      arrayBuffer: vi.fn().mockResolvedValue(sampleData),
+    }));
+
+    const buf = await downloadMedia(
+      'https://mmg.whatsapp.net/media/audio.ogg',
+      ['evolution.yowa.com.br', 'mmg.whatsapp.net'],
+    );
+    expect(Buffer.isBuffer(buf)).toBe(true);
+  });
+
+  it('rejects mmg.whatsapp.net when it is NOT in the allowedHostnames list', async () => {
+    await expect(
+      downloadMedia('https://mmg.whatsapp.net/media/audio.ogg', ['evolution.yowa.com.br']),
+    ).rejects.toThrow('Hostname não permitido para download de mídia: mmg.whatsapp.net');
+  });
+
   it('throws for invalid URL before any fetch', async () => {
-    await expect(downloadMedia('not-a-url', 'evolution.yowa.com.br')).rejects.toThrow(
+    await expect(downloadMedia('not-a-url', ['evolution.yowa.com.br'])).rejects.toThrow(
       'URL de mídia inválida',
     );
   });
@@ -166,21 +187,21 @@ describe('downloadMedia', () => {
     }));
 
     await expect(
-      downloadMedia('https://evolution.yowa.com.br/media/big.ogg', 'evolution.yowa.com.br'),
+      downloadMedia('https://evolution.yowa.com.br/media/big.ogg', ['evolution.yowa.com.br']),
     ).rejects.toThrow('Content-Length');
   });
 
-  it('returns Buffer for valid HTTPS URL matching allowedHostname', async () => {
+  it('returns Buffer for valid HTTPS URL matching allowedHostnames', async () => {
     const sampleData = new Uint8Array([1, 2, 3, 4]).buffer;
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      headers: { get: () => null }, // No Content-Length
+      headers: { get: () => null },
       arrayBuffer: vi.fn().mockResolvedValue(sampleData),
     }));
 
     const buf = await downloadMedia(
       'https://evolution.yowa.com.br/media/audio.ogg',
-      'evolution.yowa.com.br',
+      ['evolution.yowa.com.br'],
     );
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.byteLength).toBe(4);
@@ -195,7 +216,7 @@ describe('downloadMedia', () => {
     }));
 
     await expect(
-      downloadMedia('https://evolution.yowa.com.br/media/big.ogg', 'evolution.yowa.com.br'),
+      downloadMedia('https://evolution.yowa.com.br/media/big.ogg', ['evolution.yowa.com.br']),
     ).rejects.toThrow('25MB após download');
   });
 });
@@ -302,7 +323,7 @@ describe('enrichMessage — audio', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'audio', mediaUrl: 'https://evolution.yowa.com.br/audio.ogg', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.audio.transcriptions.create).toHaveBeenCalledOnce();
     const callArg = (openai.audio.transcriptions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
@@ -319,7 +340,7 @@ describe('enrichMessage — audio', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'audio', mediaUrl: null, text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(whereMock).not.toHaveBeenCalled();
@@ -347,7 +368,7 @@ describe('enrichMessage — image', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'image', mediaUrl: 'https://evolution.yowa.com.br/img.jpg', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.chat.completions.create).toHaveBeenCalledOnce();
     const callArg = (openai.chat.completions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
@@ -377,7 +398,7 @@ describe('enrichMessage — image', () => {
       text: 'caption do usuário',
     });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { text: string };
     expect(setCallArgs.text).toBe('caption do usuário\ndescrição da imagem');
@@ -393,7 +414,7 @@ describe('enrichMessage — text/embed', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'text', text: 'Olá, tudo bem?' });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.embeddings.create).toHaveBeenCalledOnce();
     const embedCallArg = (openai.embeddings.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
@@ -418,7 +439,7 @@ describe('enrichMessage — text/embed', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'text', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.embeddings.create).not.toHaveBeenCalled();
     expect(whereMock).not.toHaveBeenCalled();
@@ -431,7 +452,7 @@ describe('enrichMessage — text/embed', () => {
     const longText = 'x'.repeat(9000);
     const msg = makeMsg({ type: 'text', text: longText });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(log.warn).toHaveBeenCalledWith(
       expect.objectContaining({ messageId: 'msg-001', originalLength: 9000, truncatedLength: 8000 }),
@@ -450,7 +471,7 @@ describe('enrichMessage — skip types', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'video', mediaUrl: 'https://evolution.yowa.com.br/v.mp4', text: 'caption' });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(openai.chat.completions.create).not.toHaveBeenCalled();
@@ -468,7 +489,7 @@ describe('enrichMessage — skip types', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'sticker', mediaUrl: 'https://evolution.yowa.com.br/s.webp', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), 'evolution.yowa.com.br');
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(openai.chat.completions.create).not.toHaveBeenCalled();

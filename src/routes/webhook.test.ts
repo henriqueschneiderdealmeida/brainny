@@ -338,7 +338,7 @@ describe('POST /webhook/evolution', () => {
       expect.objectContaining({ id: 'FIXTURE_AUDIO_003', type: 'audio' }),
       expect.anything(), // log
       '/tmp/test',       // DATA_DIR
-      'evolution.yowa.com.br', // allowedHostname derived from EVOLUTION_URL
+      ['evolution.yowa.com.br', 'mmg.whatsapp.net'], // allowedHostnames: Evolution host + WhatsApp CDN
     );
   });
 
