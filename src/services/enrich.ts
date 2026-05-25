@@ -82,6 +82,47 @@ export function detectImageFormat(buf: Buffer): { mime: string; ext: string } {
 }
 
 /**
+ * Detects the real audio format from buffer magic bytes.
+ * Supports OGG, M4A/MP4, MP3, WebM, WAV, FLAC — falls back to audio/ogg for unknown formats.
+ */
+export function detectAudioFormat(buf: Buffer): { mime: string; ext: string } {
+  // OGG: bytes 0-3 = "OggS" (4F 67 67 53)
+  if (buf.length >= 4 && buf[0] === 0x4f && buf[1] === 0x67 && buf[2] === 0x67 && buf[3] === 0x53) {
+    return { mime: 'audio/ogg', ext: 'ogg' };
+  }
+  // M4A/MP4: bytes 4-7 = "ftyp" (66 74 79 70)
+  if (buf.length >= 8 && buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) {
+    return { mime: 'audio/mp4', ext: 'm4a' };
+  }
+  // MP3 with ID3 header: bytes 0-2 = "ID3" (49 44 33)
+  if (buf.length >= 3 && buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33) {
+    return { mime: 'audio/mpeg', ext: 'mp3' };
+  }
+  // MP3 sync word: FF FB, FF F3, FF F2
+  if (buf.length >= 2 && buf[0] === 0xff && (buf[1] === 0xfb || buf[1] === 0xf3 || buf[1] === 0xf2)) {
+    return { mime: 'audio/mpeg', ext: 'mp3' };
+  }
+  // WebM: bytes 0-3 = 1A 45 DF A3 (EBML)
+  if (buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    return { mime: 'audio/webm', ext: 'webm' };
+  }
+  // WAV: bytes 0-3 = "RIFF" (52 49 46 46) AND bytes 8-11 = "WAVE" (57 41 56 45)
+  if (
+    buf.length >= 12 &&
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x41 && buf[10] === 0x56 && buf[11] === 0x45
+  ) {
+    return { mime: 'audio/wav', ext: 'wav' };
+  }
+  // FLAC: bytes 0-3 = "fLaC" (66 4C 61 43)
+  if (buf.length >= 4 && buf[0] === 0x66 && buf[1] === 0x4c && buf[2] === 0x61 && buf[3] === 0x43) {
+    return { mime: 'audio/flac', ext: 'flac' };
+  }
+  // Default fallback
+  return { mime: 'audio/ogg', ext: 'ogg' };
+}
+
+/**
  * Truncates text to MAX_EMBED_CHARS and warns via Pino if truncation occurred.
  * ENRICH-04: warn log includes messageId, originalLength, truncatedLength.
  */
@@ -191,8 +232,10 @@ export async function enrichMessage(
         break;
       }
       const audioBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
+      const { mime: audioMime, ext: audioExt } = detectAudioFormat(audioBuf);
       // ENRICH-01: Whisper with toFile — must be awaited (Pitfall 1 guard: toFile returns Promise)
-      const audioFile = await toFile(audioBuf, `${msg.id}.ogg`, { type: 'audio/ogg' });
+      // Use detected mime/ext so WhatsApp M4A/OGG/WebM are sent with the correct Content-Type
+      const audioFile = await toFile(audioBuf, `${msg.id}.${audioExt}`, { type: audioMime });
       text = (await whisperQueue.add(() =>
         withRetry(() =>
           openai.audio.transcriptions.create({
@@ -203,7 +246,7 @@ export async function enrichMessage(
           }),
         ),
       )) as string;
-      await storeAsset(audioBuf, msg.id, 'ogg', msg.timestamp as Date, dataDir);
+      await storeAsset(audioBuf, msg.id, audioExt, msg.timestamp as Date, dataDir);
       break;
     }
 

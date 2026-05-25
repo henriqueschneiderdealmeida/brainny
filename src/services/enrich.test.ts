@@ -66,6 +66,7 @@ import {
   storeAsset,
   enrichMessage,
   detectImageFormat,
+  detectAudioFormat,
 } from './enrich.js';
 
 // Clear all mock call counts between tests so they don't bleed across describe blocks
@@ -281,6 +282,58 @@ describe('detectImageFormat', () => {
   });
 });
 
+// ─── describe: detectAudioFormat ─────────────────────────────────────────────
+
+describe('detectAudioFormat', () => {
+  it('detects OGG from OggS magic bytes', () => {
+    const buf = Buffer.alloc(8);
+    buf[0] = 0x4f; buf[1] = 0x67; buf[2] = 0x67; buf[3] = 0x53; // OggS
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/ogg', ext: 'ogg' });
+  });
+
+  it('detects M4A from ftyp magic bytes at offset 4', () => {
+    const buf = Buffer.alloc(12);
+    buf[4] = 0x66; buf[5] = 0x74; buf[6] = 0x79; buf[7] = 0x70; // ftyp
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/mp4', ext: 'm4a' });
+  });
+
+  it('detects MP3 from ID3 header', () => {
+    const buf = Buffer.alloc(8);
+    buf[0] = 0x49; buf[1] = 0x44; buf[2] = 0x33; // ID3
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/mpeg', ext: 'mp3' });
+  });
+
+  it('detects MP3 from sync word FF FB', () => {
+    const buf = Buffer.alloc(4);
+    buf[0] = 0xff; buf[1] = 0xfb;
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/mpeg', ext: 'mp3' });
+  });
+
+  it('detects WebM from EBML magic bytes', () => {
+    const buf = Buffer.alloc(8);
+    buf[0] = 0x1a; buf[1] = 0x45; buf[2] = 0xdf; buf[3] = 0xa3;
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/webm', ext: 'webm' });
+  });
+
+  it('detects WAV from RIFF+WAVE magic bytes', () => {
+    const buf = Buffer.alloc(12);
+    buf[0] = 0x52; buf[1] = 0x49; buf[2] = 0x46; buf[3] = 0x46; // RIFF
+    buf[8] = 0x57; buf[9] = 0x41; buf[10] = 0x56; buf[11] = 0x45; // WAVE
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/wav', ext: 'wav' });
+  });
+
+  it('detects FLAC from fLaC magic bytes', () => {
+    const buf = Buffer.alloc(8);
+    buf[0] = 0x66; buf[1] = 0x4c; buf[2] = 0x61; buf[3] = 0x43; // fLaC
+    expect(detectAudioFormat(buf)).toEqual({ mime: 'audio/flac', ext: 'flac' });
+  });
+
+  it('returns fallback audio/ogg for empty/unknown buffer', () => {
+    expect(detectAudioFormat(Buffer.alloc(0))).toEqual({ mime: 'audio/ogg', ext: 'ogg' });
+    expect(detectAudioFormat(Buffer.alloc(10))).toEqual({ mime: 'audio/ogg', ext: 'ogg' });
+  });
+});
+
 // ─── describe: storeAsset ────────────────────────────────────────────────────
 
 describe('storeAsset', () => {
@@ -362,6 +415,32 @@ describe('enrichMessage — audio', () => {
     expect(callArg.response_format).toBe('text');
     // db.update was called with the transcript text
     expect(whereMock).toHaveBeenCalled();
+  });
+
+  it('passes audio/mp4 mime and m4a ext to toFile when buffer has ftyp magic bytes (WhatsApp M4A)', async () => {
+    // Build an ArrayBuffer that looks like M4A: bytes 4-7 = "ftyp"
+    const m4aBuf = new Uint8Array(12);
+    m4aBuf[4] = 0x66; m4aBuf[5] = 0x74; m4aBuf[6] = 0x79; m4aBuf[7] = 0x70; // ftyp
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      arrayBuffer: vi.fn().mockResolvedValue(m4aBuf.buffer),
+    }));
+
+    const { db } = makeMockDb();
+    const log = makeMockLog();
+    const openai = await makeMockOpenAI();
+    const msg = makeMsg({ type: 'audio', mediaUrl: 'https://evolution.yowa.com.br/audio.enc', text: null });
+
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+
+    const { toFile } = await import('openai');
+    const toFileMock = toFile as ReturnType<typeof vi.fn>;
+    expect(toFileMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringMatching(/\.m4a$/),
+      { type: 'audio/mp4' },
+    );
   });
 
   it('does not download or call OpenAI when type=audio and mediaUrl is null', async () => {
