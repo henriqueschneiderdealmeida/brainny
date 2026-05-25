@@ -38,6 +38,8 @@ jobs:
           PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
           PORTAINER_USERNAME: ${{ secrets.PORTAINER_USERNAME }}
           PORTAINER_PASSWORD: ${{ secrets.PORTAINER_PASSWORD }}
+          GHCR_USERNAME: ${{ github.repository_owner }}
+          GHCR_PASSWORD: ${{ secrets.GHCR_PAT }}
           SERVICE_ID: kz91w04t3f5epnd2typs2lczu
           IMAGE: ghcr.io/${{ github.repository_owner }}/brainny:latest
         run: |
@@ -60,10 +62,18 @@ jobs:
           print(json.dumps(spec))
           ")
 
+          # X-Registry-Auth: credenciais ghcr.io para o Swarm conseguir puxar a imagem privada
+          REGISTRY_AUTH=$(python3 -c "
+          import json, base64, os
+          creds = {'username': os.environ['GHCR_USERNAME'], 'password': os.environ['GHCR_PASSWORD'], 'serveraddress': 'ghcr.io'}
+          print(base64.b64encode(json.dumps(creds).encode()).decode())
+          ")
+
           curl -sf -X POST \
             "$PORTAINER_URL/api/endpoints/1/docker/services/$SERVICE_ID/update?version=$VERSION" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
+            -H "X-Registry-Auth: $REGISTRY_AUTH" \
             -d "$SPEC"
 
           echo "Deploy triggered — service updated to $IMAGE"
