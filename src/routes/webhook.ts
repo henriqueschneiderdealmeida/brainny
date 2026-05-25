@@ -54,9 +54,9 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
       // EVOLUTION_URL is validated as z.string().url() by Zod at startup — new URL() will not throw
       const allowedHostname = new URL(fastify.config.EVOLUTION_URL).hostname;
 
-      // Fire-and-forget: void prevents unhandled-promise-rejection lint warnings
+      // queue.on('error') in queue plugin handles task failures — no void needed
       // Pitfall 2: do NOT await — that would block until the job completes
-      void fastify.queue.add(async () => {
+      fastify.queue.add(async () => {
         const messages = extractMessages(body, log as unknown as Logger);
 
         for (const msg of messages) {

@@ -31,7 +31,7 @@ export function extractMessages(body: unknown, log: Logger): NormalizedMessage[]
   const b = body as { event?: string; data?: unknown };
 
   if (b.event !== 'MESSAGES_UPSERT') {
-    log.debug({ event: b.event }, 'Evento não é MESSAGES_UPSERT, ignorado');
+    log.info({ event: b.event }, 'Evento ignorado (não é MESSAGES_UPSERT)');
     return [];
   }
 
