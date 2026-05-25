@@ -62,12 +62,20 @@ vi.mock('p-retry', () => ({
 
 import {
   downloadMedia,
+  downloadMediaViaEvolution,
   truncateForEmbedding,
   storeAsset,
   enrichMessage,
   detectImageFormat,
   detectAudioFormat,
 } from './enrich.js';
+import type { EvolutionConfig } from './enrich.js';
+
+const mockEvolutionConfig: EvolutionConfig = {
+  url: 'https://evolution.yowa.com.br',
+  apiKey: 'test-key',
+  instance: 'test-instance',
+};
 
 // Clear all mock call counts between tests so they don't bleed across describe blocks
 beforeEach(() => {
@@ -386,6 +394,69 @@ describe('storeAsset', () => {
   });
 });
 
+// ─── describe: downloadMediaViaEvolution ─────────────────────────────────────
+
+describe('downloadMediaViaEvolution', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns a Buffer decoded from the base64 in the Evolution API response', async () => {
+    const payload = Buffer.from([0x4f, 0x67, 0x67, 0x53]); // OggS
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ base64: payload.toString('base64'), mediaType: 'audio/ogg' }),
+    }));
+
+    const result = await downloadMediaViaEvolution({ audioMessage: {} }, mockEvolutionConfig);
+    expect(Buffer.isBuffer(result)).toBe(true);
+    expect(result[0]).toBe(0x4f); // O
+    expect(result[1]).toBe(0x67); // g
+  });
+
+  it('POSTs to the correct Evolution API endpoint with apikey header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ base64: Buffer.alloc(4).toString('base64'), mediaType: 'audio/ogg' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rawJson = { audioMessage: { mediaKey: 'abc' } };
+    await downloadMediaViaEvolution(rawJson, mockEvolutionConfig);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://evolution.yowa.com.br/chat/getBase64FromMediaMessage/test-instance');
+    expect((init.headers as Record<string, string>)['apikey']).toBe('test-key');
+    expect(init.method).toBe('POST');
+    const body = JSON.parse(init.body as string) as { message: unknown };
+    expect(body.message).toEqual(rawJson);
+  });
+
+  it('throws when Evolution API returns non-ok status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    }));
+
+    await expect(
+      downloadMediaViaEvolution({}, mockEvolutionConfig),
+    ).rejects.toThrow('Evolution media download failed: 500');
+  });
+
+  it('throws when Evolution API returns empty base64', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ base64: '', mediaType: 'audio/ogg' }),
+    }));
+
+    await expect(
+      downloadMediaViaEvolution({}, mockEvolutionConfig),
+    ).rejects.toThrow('Evolution API returned empty base64 for media');
+  });
+});
+
 // ─── describe: enrichMessage — audio ─────────────────────────────────────────
 
 describe('enrichMessage — audio', () => {
@@ -393,12 +464,11 @@ describe('enrichMessage — audio', () => {
     vi.unstubAllGlobals();
   });
 
-  it('calls downloadMedia and transcriptions.create when type=audio and mediaUrl is set', async () => {
-    const sampleBuf = new ArrayBuffer(100);
+  it('calls downloadMediaViaEvolution and transcriptions.create when type=audio and mediaUrl is set', async () => {
+    const sampleBase64 = Buffer.alloc(100).toString('base64');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      headers: { get: () => null },
-      arrayBuffer: vi.fn().mockResolvedValue(sampleBuf),
+      json: vi.fn().mockResolvedValue({ base64: sampleBase64, mediaType: 'audio/ogg' }),
     }));
 
     const { db, whereMock } = makeMockDb();
@@ -406,7 +476,7 @@ describe('enrichMessage — audio', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'audio', mediaUrl: 'https://evolution.yowa.com.br/audio.ogg', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.audio.transcriptions.create).toHaveBeenCalledOnce();
     const callArg = (openai.audio.transcriptions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as Record<string, unknown>;
@@ -418,13 +488,12 @@ describe('enrichMessage — audio', () => {
   });
 
   it('passes audio/mp4 mime and m4a ext to toFile when buffer has ftyp magic bytes (WhatsApp M4A)', async () => {
-    // Build an ArrayBuffer that looks like M4A: bytes 4-7 = "ftyp"
-    const m4aBuf = new Uint8Array(12);
+    // Build a buffer that looks like M4A: bytes 4-7 = "ftyp"
+    const m4aBuf = Buffer.alloc(12);
     m4aBuf[4] = 0x66; m4aBuf[5] = 0x74; m4aBuf[6] = 0x79; m4aBuf[7] = 0x70; // ftyp
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      headers: { get: () => null },
-      arrayBuffer: vi.fn().mockResolvedValue(m4aBuf.buffer),
+      json: vi.fn().mockResolvedValue({ base64: m4aBuf.toString('base64'), mediaType: 'audio/mp4' }),
     }));
 
     const { db } = makeMockDb();
@@ -432,7 +501,7 @@ describe('enrichMessage — audio', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'audio', mediaUrl: 'https://evolution.yowa.com.br/audio.enc', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     const { toFile } = await import('openai');
     const toFileMock = toFile as ReturnType<typeof vi.fn>;
@@ -449,7 +518,7 @@ describe('enrichMessage — audio', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'audio', mediaUrl: null, text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(whereMock).not.toHaveBeenCalled();
@@ -465,11 +534,10 @@ describe('enrichMessage — image', () => {
   });
 
   it('calls vision create with base64 data URL starting data:image/jpeg;base64,', async () => {
-    const sampleBuf = new ArrayBuffer(10);
+    const sampleBase64 = Buffer.alloc(10).toString('base64');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      headers: { get: () => null },
-      arrayBuffer: vi.fn().mockResolvedValue(sampleBuf),
+      json: vi.fn().mockResolvedValue({ base64: sampleBase64, mediaType: 'image/jpeg' }),
     }));
 
     const { db } = makeMockDb();
@@ -477,7 +545,7 @@ describe('enrichMessage — image', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'image', mediaUrl: 'https://evolution.yowa.com.br/img.jpg', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.chat.completions.create).toHaveBeenCalledOnce();
     const callArg = (openai.chat.completions.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
@@ -491,11 +559,10 @@ describe('enrichMessage — image', () => {
   });
 
   it('combines caption with vision description when msg.text is non-null', async () => {
-    const sampleBuf = new ArrayBuffer(10);
+    const sampleBase64 = Buffer.alloc(10).toString('base64');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      headers: { get: () => null },
-      arrayBuffer: vi.fn().mockResolvedValue(sampleBuf),
+      json: vi.fn().mockResolvedValue({ base64: sampleBase64, mediaType: 'image/jpeg' }),
     }));
 
     const { db, setMock } = makeMockDb();
@@ -507,7 +574,7 @@ describe('enrichMessage — image', () => {
       text: 'caption do usuário',
     });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     const setCallArgs = (setMock as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { text: string };
     expect(setCallArgs.text).toBe('caption do usuário\ndescrição da imagem');
@@ -523,7 +590,7 @@ describe('enrichMessage — text/embed', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'text', text: 'Olá, tudo bem?' });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.embeddings.create).toHaveBeenCalledOnce();
     const embedCallArg = (openai.embeddings.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
@@ -548,7 +615,7 @@ describe('enrichMessage — text/embed', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'text', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.embeddings.create).not.toHaveBeenCalled();
     expect(whereMock).not.toHaveBeenCalled();
@@ -561,7 +628,7 @@ describe('enrichMessage — text/embed', () => {
     const longText = 'x'.repeat(9000);
     const msg = makeMsg({ type: 'text', text: longText });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(log.warn).toHaveBeenCalledWith(
       expect.objectContaining({ messageId: 'msg-001', originalLength: 9000, truncatedLength: 8000 }),
@@ -580,7 +647,7 @@ describe('enrichMessage — skip types', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'video', mediaUrl: 'https://evolution.yowa.com.br/v.mp4', text: 'caption' });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(openai.chat.completions.create).not.toHaveBeenCalled();
@@ -598,7 +665,7 @@ describe('enrichMessage — skip types', () => {
     const openai = await makeMockOpenAI();
     const msg = makeMsg({ type: 'sticker', mediaUrl: 'https://evolution.yowa.com.br/s.webp', text: null });
 
-    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), ['evolution.yowa.com.br']);
+    await enrichMessage(db as never, openai as never, msg as never, log as never, os.tmpdir(), mockEvolutionConfig);
 
     expect(openai.audio.transcriptions.create).not.toHaveBeenCalled();
     expect(openai.chat.completions.create).not.toHaveBeenCalled();

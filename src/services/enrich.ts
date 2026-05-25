@@ -3,6 +3,8 @@
 // T-03-01: SSRF guard in downloadMedia — hostname allowlist before any fetch()
 // T-03-02: Content-Length check before arrayBuffer(); 25MB hard cap after download
 // T-03-04: truncateForEmbedding caps at 8000 chars before embeddings.create
+// WhatsApp media is end-to-end encrypted. downloadMediaViaEvolution() calls Evolution API's
+// getBase64FromMediaMessage endpoint which uses the stored mediaKey (in rawJson) to decrypt.
 import OpenAI, { toFile, APIError } from 'openai';
 import type { ChatCompletion } from 'openai/resources/chat/completions.js';
 import PQueue from 'p-queue';
@@ -15,6 +17,12 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { messages } from '../db/schema.js';
 import type { NormalizedMessage } from './ingest.js';
 import * as schema from '../db/schema.js';
+
+export interface EvolutionConfig {
+  url: string;
+  apiKey: string;
+  instance: string;
+}
 
 // Module-level constants
 const MAX_EMBED_CHARS = 8000;
@@ -183,6 +191,40 @@ export async function downloadMedia(url: string, allowedHostnames: string[]): Pr
 }
 
 /**
+ * Downloads decrypted media via Evolution API's getBase64FromMediaMessage endpoint.
+ * WhatsApp media is E2E encrypted — mmg.whatsapp.net serves encrypted bytes that cannot
+ * be used directly. Evolution API uses the stored mediaKey (in rawJson) to decrypt and
+ * returns a clean base64-encoded buffer.
+ */
+export async function downloadMediaViaEvolution(
+  rawJson: Record<string, unknown>,
+  config: EvolutionConfig,
+): Promise<Buffer> {
+  const endpoint = `${config.url}/chat/getBase64FromMediaMessage/${config.instance}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': config.apiKey,
+    },
+    body: JSON.stringify({ message: rawJson, convertToMp4: false }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Evolution media download failed: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json() as { base64: string; mediaType: string };
+  if (!data.base64) {
+    throw new Error('Evolution API returned empty base64 for media');
+  }
+  const buf = Buffer.from(data.base64, 'base64');
+  if (buf.byteLength > MAX_MEDIA_BYTES) {
+    throw new Error(`Arquivo excede 25MB após download via Evolution: ${buf.byteLength} bytes`);
+  }
+  return buf;
+}
+
+/**
  * Stores a media buffer to disk atomically (tmp → rename).
  * ENRICH-05: date-partitioned path data/YYYY-MM-DD/assets/<id>.<ext>
  * Uses msg.timestamp (not new Date()) for date derivation — correct for backfill.
@@ -221,7 +263,7 @@ export async function enrichMessage(
   msg: NormalizedMessage,
   log: Logger,
   dataDir: string,
-  allowedHostnames: string[],
+  evolutionConfig: EvolutionConfig,
 ): Promise<void> {
   let text: string | null = msg.text ?? null;
 
@@ -231,7 +273,7 @@ export async function enrichMessage(
         log.info({ messageId: msg.id }, 'Áudio sem URL, ignorado');
         break;
       }
-      const audioBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
+      const audioBuf = await downloadMediaViaEvolution(msg.rawJson as Record<string, unknown>, evolutionConfig);
       const { mime: audioMime, ext: audioExt } = detectAudioFormat(audioBuf);
       // ENRICH-01: Whisper with toFile — must be awaited (Pitfall 1 guard: toFile returns Promise)
       // Use detected mime/ext so WhatsApp M4A/OGG/WebM are sent with the correct Content-Type
@@ -255,7 +297,7 @@ export async function enrichMessage(
         log.info({ messageId: msg.id }, 'Imagem sem URL, ignorada');
         break;
       }
-      const imageBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
+      const imageBuf = await downloadMediaViaEvolution(msg.rawJson as Record<string, unknown>, evolutionConfig);
       const { mime, ext: imgExt } = detectImageFormat(imageBuf);
       const base64 = imageBuf.toString('base64');
       const caption = msg.text ?? null;
@@ -295,7 +337,7 @@ export async function enrichMessage(
 
     case 'document': {
       if (!msg.mediaUrl) break;
-      const docBuf = await downloadMedia(msg.mediaUrl, allowedHostnames);
+      const docBuf = await downloadMediaViaEvolution(msg.rawJson as Record<string, unknown>, evolutionConfig);
       const rawDoc = msg.rawJson as { documentMessage?: { fileName?: string } };
       const ext = rawDoc.documentMessage?.fileName?.split('.').pop() ?? 'bin';
       await storeAsset(docBuf, msg.id, ext, msg.timestamp as Date, dataDir);

@@ -50,9 +50,11 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
         event: (body as { event?: string }).event,
       });
 
-      // T-03-07: derive allowedHostnames from EVOLUTION_URL once per request + WhatsApp CDN
-      // EVOLUTION_URL is validated as z.string().url() by Zod at startup — new URL() will not throw
-      const allowedHostnames = [new URL(fastify.config.EVOLUTION_URL).hostname, 'mmg.whatsapp.net'];
+      const evolutionConfig = {
+        url: fastify.config.EVOLUTION_URL,
+        apiKey: fastify.config.EVOLUTION_API_KEY,
+        instance: fastify.config.EVOLUTION_INSTANCE,
+      };
 
       // queue.on('error') in queue plugin handles task failures — no void needed
       // Pitfall 2: do NOT await — that would block until the job completes
@@ -86,7 +88,7 @@ const webhookRoutes: FastifyPluginAsyncZod = async (fastify) => {
               msg,
               log as unknown as Logger, // FastifyBaseLogger is structurally compatible with pino.Logger at runtime
               fastify.config.DATA_DIR,
-              allowedHostnames,
+              evolutionConfig,
             );
           } catch (err: unknown) {
             log.error(
